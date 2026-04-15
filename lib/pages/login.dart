@@ -23,26 +23,51 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       // backgroundColor: Colors.black,
-      appBar: AppBar(
-
-        centerTitle: true,
-        title: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "StreamPlay",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        appBar: AppBar(
+          centerTitle: true,
+          // backgroundColor: Colors.transparent,
+          // elevation: 0,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF0F2027), // dark blue
+                  Color(0xFF203A43), // teal
+                  Color(0xFF2C5364), // bluish
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-            Text(
-              "Experience the pulse of sound",
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
-            ),
-          ],
+          ),
+          title: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Text(
+                "StreamPlay",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              Text(
+                "Experience the pulse of sound",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
-      ),
       body:
-
-      Center(
+      Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F2027), // dark blue
+              Color(0xFF203A43), // teal
+              Color(0xFF2C5364), // bluish
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+      child: Center(
         child: Container(
           width: 350,
           height: 400,
@@ -249,6 +274,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
+    )
     );
   }
 }
