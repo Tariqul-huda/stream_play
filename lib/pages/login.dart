@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
+import './signup.dart';
 class LoginPage extends StatefulWidget {
-  LoginPage({super.key});
+  const LoginPage({super.key});
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -22,7 +22,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // backgroundColor: Colors.black,
       appBar: AppBar(
+
         centerTitle: true,
         title: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -38,7 +40,9 @@ class _LoginPageState extends State<LoginPage> {
           ],
         ),
       ),
-      body: Center(
+      body:
+
+      Center(
         child: Container(
           width: 350,
           height: 400,
@@ -180,12 +184,12 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFA855F7).withOpacity(0.6),
+                            color: const Color(0xFFA855F7).withValues(alpha:0.6),
                             blurRadius: 20,
                             spreadRadius: 2,
                           ),
                           BoxShadow(
-                            color: const Color(0xFF00F0FF).withOpacity(0.6),
+                            color: const Color(0xFF00F0FF).withValues(alpha:0.6),
                             blurRadius: 20,
                             spreadRadius: 2,
                           ),
@@ -214,6 +218,33 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
+              SizedBox(height: 15,),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "Don't have an account? ",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) =>  SignUpPage()),
+                      );
+                    },
+                    child: const Text(
+                      "Sign up",
+                      style: TextStyle(
+                        color: Color(0xFF00F0FF), // cyan accent
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+
             ],
           ),
         ),
