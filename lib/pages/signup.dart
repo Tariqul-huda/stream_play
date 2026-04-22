@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../color/color_scheme.dart';
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -30,16 +30,8 @@ class _SignUpState extends State<SignUpPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFF0F2027),
-                Color(0xFF203A43),
-                Color(0xFF2C5364),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+          decoration:  const BoxDecoration(
+            gradient:  ColorTheme.mainGradient,
           ),
         ),
         title: Column(
