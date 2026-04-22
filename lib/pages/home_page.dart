@@ -29,9 +29,63 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
+      drawer: Drawer(
+        backgroundColor: const Color(0xFF1B1B1C),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: ColorTheme.mainGradient,
+              ),
+              child: CircleAvatar(
+                radius: 40,
+                // backgroundImage: ,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person, color: ColorTheme.neonLabelColor),
+              title: const Text('View Profile', style: TextStyle(color: Colors.white)),
+              onTap: () {},
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_circle, color: ColorTheme.neonLabelColor),
+              title: const Text('Add Account', style: TextStyle(color: Colors.white)),
+              onTap: () {},
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings, color: ColorTheme.neonLabelColor),
+              title: const Text('Settings', style: TextStyle(color: Colors.white)),
+              onTap: () {},
+            ),
+
+          ],
+        ),
+      ),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: ColorTheme.mainGradient,
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: const CircleAvatar(
+                  radius: 18,
+                  backgroundImage: AssetImage('assets/profile.jpg'),
+                ),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
+          ),
+        ),
+      ),
       body: Container(
         decoration: const BoxDecoration(
-          gradient: ColorTheme.mainGradient, // Apply your gradient here
+          gradient: ColorTheme.mainGradient,
         ),
         child: _pages[_selectedIndex],
       ),
@@ -43,19 +97,23 @@ class _HomePageState extends State<HomePage> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             child: BottomNavigationBar(
               backgroundColor: Colors.transparent,
               type: BottomNavigationBarType.fixed,
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
               selectedItemColor: ColorTheme.neonLabelColor,
+              unselectedItemColor: Colors.grey[400],
               selectedLabelStyle: const TextStyle(
                 color: ColorTheme.neonLabelColor,
                 shadows: [ColorTheme.neonLabelGlow],
-                fontWeight: FontWeight.bold
+                fontWeight: FontWeight.bold,
               ),
-              unselectedItemColor: Colors.grey[400],
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
+              selectedIconTheme: const IconThemeData(
+                color: ColorTheme.neonLabelColor,
+                shadows: [ColorTheme.neonLabelGlow],
+              ),
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
                 BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
