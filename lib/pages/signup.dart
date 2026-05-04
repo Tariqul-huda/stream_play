@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../color/color_scheme.dart';
+import '../services/auth_api.dart';
+import './home_page.dart';
+import '../config/env.dart';
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
@@ -14,11 +17,35 @@ class _SignUpState extends State<SignUpPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
 
-  void _signUp() {
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signing up...')),
+  final _api = AuthApi(baseUrl: Env.apiBaseUrl);
+  bool _isLoading = false;
+
+  Future<void> _signUp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _api.register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } on AuthApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Signup failed. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -92,12 +119,31 @@ class _SignUpState extends State<SignUpPage> {
                   child: Column(
                     children: [
                       // Email
-                      _buildField("Email", _emailController),
+                      _buildField(
+                        "Email", 
+                        _emailController,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return "Enter Email";
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            return "Enter a valid email address";
+                          }
+                          return null;
+                        },
+                      ),
 
                       const SizedBox(height: 16),
 
                       // Password
-                      _buildField("Password", _passwordController, isPassword: true),
+                      _buildField(
+                        "Password", 
+                        _passwordController, 
+                        isPassword: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return "Enter Password";
+                          if (value.length < 8) return "Password must be at least 8 characters";
+                          return null;
+                        },
+                      ),
 
                       const SizedBox(height: 16),
 
@@ -122,20 +168,26 @@ class _SignUpState extends State<SignUpPage> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: ElevatedButton(
-                          onPressed: _signUp,
+                          onPressed: _isLoading ? null : _signUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
                             minimumSize: const Size(200, 50),
                           ),
-                          child: const Text(
-                            "Sign Up",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
-                            ),
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text(
+                                  "Sign Up",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
                         ),
                       ),
                     ],

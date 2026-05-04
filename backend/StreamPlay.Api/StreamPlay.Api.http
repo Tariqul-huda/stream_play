@@ -1,0 +1,6 @@
+@StreamPlay.Api_HostAddress = http://localhost:5064
+
+GET {{StreamPlay.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import './signup.dart';
+import './forgot_password.dart';
+import './home_page.dart';
+import '../services/auth_api.dart';
+import '../config/env.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
   @override
@@ -10,12 +14,37 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _api = AuthApi(baseUrl: Env.apiBaseUrl);
 
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(
+  bool _isLoading = false;
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _api.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Logging in...')));
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } on AuthApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login failed. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -196,7 +225,33 @@ class _LoginPageState extends State<LoginPage> {
                     ),
 
                     //gap
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: 300,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgotPasswordPage(),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "Forgot password?",
+                            style: TextStyle(
+                              color: Color(0xFF00F0FF),
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
 
                     //gap
                     Container(
@@ -221,7 +276,7 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _login,
+                        onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
@@ -230,14 +285,20 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
-                          "Login",
-                          style: TextStyle(
-                            color: Colors.black, // dark text for contrast
-                            fontWeight: FontWeight.w700,
-                            fontSize: 18,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text(
+                                "Login",
+                                style: TextStyle(
+                                  color: Colors.black, // dark text for contrast
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18,
+                                ),
+                              ),
                       ),
                     ),
                   ],
