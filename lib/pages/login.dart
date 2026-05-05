@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../color/color_scheme.dart';
 import './signup.dart';
 import './forgot_password.dart';
 import './home_page.dart';
@@ -51,185 +52,108 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: Colors.black,
-        appBar: AppBar(
-          centerTitle: true,
-          // backgroundColor: Colors.transparent,
-          // elevation: 0,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF0F2027), // dark blue
-                  Color(0xFF203A43), // teal
-                  Color(0xFF2C5364), // bluish
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
-          title: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Text(
-                "StreamPlay",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              Text(
-                "Experience the pulse of sound",
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-            ],
-          ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: ColorTheme.mainGradient,
         ),
-      body:
-      Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF0F2027), // dark blue
-              Color(0xFF203A43), // teal
-              Color(0xFF2C5364), // bluish
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-      child: Center(
-        child: Container(
-          width: 350,
-          height: 400,
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(12),
-            // boxShadow: [
-            //   BoxShadow(
-            //     color: Colors.
-            //   )
-            // ]
-          ),
-          child: Column(
-            children: [
-              SizedBox(height: 20),
-              Text(
-                "Welcome Back",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 24,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                Icon(
+                  Icons.play_circle_filled,
+                  size: 80,
+                  color: ColorTheme.neonLabelColor,
                 ),
-              ),
-              SizedBox(height: 20),
-              Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 300,
-                      child: TextFormField(
+                const SizedBox(height: 16),
+                const Text(
+                  "StreamPlay",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 32,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Experience the pulse of sound",
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+                const SizedBox(height: 40),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Log in to stream",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
                         controller: _emailController,
                         style: const TextStyle(
-                          color: Colors.white, // input text color
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              color: Color(0xFF00FFFF), // neon cyan glow
-                              blurRadius: 5,
-                            ),
-                          ],
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
-                          labelText: "Email",
-                          labelStyle: const TextStyle(
-                            color: Color(0xFF00FFFF), // neon label color
-                            fontWeight: FontWeight.bold,
-                            shadows: [
-                              Shadow(color: Color(0xFF00FFFF), blurRadius: 5),
-                            ],
-                          ),
+                          labelText: "Email or username",
+                          labelStyle: const TextStyle(color: Colors.grey),
                           filled: true,
-                          fillColor:
-                              Colors.black, // background color of input field
+                          fillColor: Colors.white.withValues(alpha: 0.1),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                           enabledBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(
-                              color: Color(0xFF00FFFF), // neon border color
-                              width: 1,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Colors.transparent),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(
-                              color: Color(0xFF00FFFF),
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: ColorTheme.neonLabelColor, width: 2),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        validator: (value) =>
-                            value!.isEmpty ? "Please Enter Email" : null,
+                        validator: (value) => value!.isEmpty ? "Please enter your email" : null,
                       ),
-                    ),
-
-                    //gap between field
-                    const SizedBox(height: 16),
-
-                    //gap between field
-                    SizedBox(
-                      width: 300,
-                      child: TextFormField(
+                      const SizedBox(height: 16),
+                      TextFormField(
                         controller: _passwordController,
+                        obscureText: true,
                         style: const TextStyle(
-                          color: Colors.white, // input text color
-                          fontWeight: FontWeight.bold,
-                          shadows: [
-                            Shadow(
-                              color: Color(0xFF00FFFF), // neon cyan glow
-                              blurRadius: 5,
-                            ),
-                          ],
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
                         ),
                         decoration: InputDecoration(
                           labelText: "Password",
-                          labelStyle: const TextStyle(
-                            color: Color(0xFF00FFFF), // neon label color
-                            fontWeight: FontWeight.bold,
-                            shadows: [
-                              Shadow(color: Color(0xFF00FFFF), blurRadius: 5),
-                            ],
-                          ),
+                          labelStyle: const TextStyle(color: Colors.grey),
                           filled: true,
-                          fillColor:
-                              Colors.black, // background color of input field
+                          fillColor: Colors.white.withValues(alpha: 0.1),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                           enabledBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(
-                              color: Color(0xFF00FFFF), // neon border color
-                              width: 1,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Colors.transparent),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: const BorderSide(
-                              color: Color(0xFF00FFFF),
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: ColorTheme.neonLabelColor, width: 2),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        validator: (value) =>
-                            value!.isEmpty ? "Please Enter Password" : null,
+                        validator: (value) => value!.isEmpty ? "Please enter your password" : null,
                       ),
-                    ),
-
-                    //gap
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: 300,
-                      child: Align(
-                        alignment: Alignment.centerRight,
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -239,103 +163,102 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             );
                           },
-                          child: const Text(
-                            "Forgot password?",
-                            style: TextStyle(
-                              color: Color(0xFF00F0FF),
-                              fontWeight: FontWeight.bold,
-                              decoration: TextDecoration.underline,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: const Text(
+                              "Forgot your password?",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    //gap
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF00F0FF), Color(0xFFA855F7)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                      const SizedBox(height: 24),
+                      Container(
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00F0FF), Color(0xFFA855F7)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(27),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFA855F7).withValues(alpha: 0.6),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                            BoxShadow(
+                              color: const Color(0xFF00F0FF).withValues(alpha: 0.6),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFA855F7).withValues(alpha:0.6),
-                            blurRadius: 20,
-                            spreadRadius: 2,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(27),
+                            ),
                           ),
-                          BoxShadow(
-                            color: const Color(0xFF00F0FF).withValues(alpha:0.6),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          minimumSize: const Size(200, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text(
-                                "Login",
-                                style: TextStyle(
-                                  color: Colors.black, // dark text for contrast
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 18,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text(
+                                  "Log In",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 40),
+                const Divider(color: Colors.white24, thickness: 1),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Don't have an account? ",
+                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignUpPage()),
+                        );
+                      },
+                      child: const Text(
+                        "Sign up for StreamPlay",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              SizedBox(height: 15,),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "Don't have an account? ",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) =>  SignUpPage()),
-                      );
-                    },
-                    child: const Text(
-                      "Sign up",
-                      style: TextStyle(
-                        color: Color(0xFF00F0FF), // cyan accent
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ],
-              )
-
-            ],
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),
-    )
     );
   }
 }

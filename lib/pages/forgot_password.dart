@@ -85,7 +85,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(gradient: ColorTheme.mainGradient),
+          decoration: BoxDecoration(gradient: ColorTheme.mainGradient),
         ),
         title: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -106,7 +106,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
       ),
       body: Container(
-        decoration: const BoxDecoration(gradient: ColorTheme.mainGradient),
+        decoration: BoxDecoration(gradient: ColorTheme.mainGradient),
         child: Center(
           child: Container(
             width: 350,

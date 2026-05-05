@@ -52,36 +52,10 @@ class _SignUpState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration:  const BoxDecoration(
-            gradient:  ColorTheme.mainGradient,
-          ),
-        ),
-        title: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Text(
-              "StreamPlay",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            Text(
-              "Experience the pulse of sound",
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-
       body: Container(
-        decoration: const BoxDecoration(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
               Color(0xFF0F2027),
@@ -92,24 +66,43 @@ class _SignUpState extends State<SignUpPage> {
             end: Alignment.bottomRight,
           ),
         ),
-        child: Center(
-          child: Container(
-            width: 350,
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 20),
+                Icon(
+                  Icons.play_circle_filled,
+                  size: 80,
+                  color: ColorTheme.neonLabelColor,
+                ),
+                const SizedBox(height: 16),
                 const Text(
-                  "Create Account",
+                  "StreamPlay",
                   style: TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 32,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Experience the pulse of sound",
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+                const SizedBox(height: 40),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Sign up to start listening",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -117,6 +110,7 @@ class _SignUpState extends State<SignUpPage> {
                 Form(
                   key: _formKey,
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Email
                       _buildField(
@@ -159,20 +153,25 @@ class _SignUpState extends State<SignUpPage> {
 
                       const SizedBox(height: 20),
 
-                      // Sign Up Button
+                      const SizedBox(height: 24),
                       Container(
+                        height: 54,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF00F0FF), Color(0xFFA855F7)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(27),
                         ),
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _signUp,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
-                            minimumSize: const Size(200, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(27),
+                            ),
                           ),
                           child: _isLoading
                               ? const SizedBox(
@@ -184,8 +183,8 @@ class _SignUpState extends State<SignUpPage> {
                                   "Sign Up",
                                   style: TextStyle(
                                     color: Colors.black,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
                                   ),
                                 ),
                         ),
@@ -193,32 +192,31 @@ class _SignUpState extends State<SignUpPage> {
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 15),
-
-                // Back to login
+                const SizedBox(height: 40),
+                const Divider(color: Colors.white24, thickness: 1),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
                       "Already have an account? ",
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
                     ),
                     GestureDetector(
                       onTap: () {
                         Navigator.pop(context);
                       },
                       child: const Text(
-                        "Login",
+                        "Log in here",
                         style: TextStyle(
-                          color: Color(0xFF00F0FF),
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
                   ],
-                )
+                ),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -234,35 +232,30 @@ class _SignUpState extends State<SignUpPage> {
         bool isPassword = false,
         String? Function(String?)? validator,
       }) {
-    return SizedBox(
-      width: 300,
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            color: Color(0xFF00FFFF),
-            fontWeight: FontWeight.bold,
-          ),
-          filled: true,
-          fillColor: Colors.black,
-          enabledBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Color(0xFF00FFFF)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Color(0xFF00FFFF), width: 2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        validator: validator ??
-                (value) => value!.isEmpty ? "Enter $label" : null,
+    return TextFormField(
+      controller: controller,
+      obscureText: isPassword,
+      style: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w500,
       ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.1),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        enabledBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Colors.transparent),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: ColorTheme.neonLabelColor, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      validator: validator ??
+              (value) => value!.isEmpty ? "Enter $label" : null,
     );
   }
 }
