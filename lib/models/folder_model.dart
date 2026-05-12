@@ -1,21 +1,21 @@
-class PlaylistModel {
+class FolderModel {
   final String id;
   final String name;
-  final List<String> musicIds;
+  final List<String> playlistIds;
   final DateTime createdAtUtc;
 
-  PlaylistModel({
+  FolderModel({
     required this.id,
     required this.name,
-    required this.musicIds,
+    required this.playlistIds,
     required this.createdAtUtc,
   });
 
-  factory PlaylistModel.fromJson(Map<String, dynamic> json) {
-    return PlaylistModel(
+  factory FolderModel.fromJson(Map<String, dynamic> json) {
+    return FolderModel(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
-      musicIds: List<String>.from(json['musicIds'] ?? []),
+      playlistIds: List<String>.from(json['playlistIds'] ?? []),
       createdAtUtc: DateTime.tryParse(json['createdAtUtc'] ?? '') ?? DateTime.now(),
     );
   }
@@ -24,7 +24,7 @@ class PlaylistModel {
     return {
       'id': id,
       'name': name,
-      'musicIds': musicIds,
+      'playlistIds': playlistIds,
       'createdAtUtc': createdAtUtc.toIso8601String(),
     };
   }

@@ -10,5 +10,6 @@ public interface IMusicService
     Task<IReadOnlyList<MusicResponse>> GetByGenreAsync(string genre, CancellationToken ct = default);
     Task<IReadOnlyList<MusicResponse>> SearchAsync(string q, CancellationToken ct = default);
     Task DeleteAsync(string id, CancellationToken ct = default);
+    Task<MusicResponse> AddLabelAsync(string userId, string musicId, AddLabelRequest req, CancellationToken ct = default);
 }
 

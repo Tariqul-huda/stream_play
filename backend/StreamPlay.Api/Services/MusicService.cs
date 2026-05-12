@@ -10,10 +10,12 @@ namespace StreamPlay.Api.Services;
 public sealed class MusicService : IMusicService
 {
     private readonly IMusicRepository _music;
+    private readonly IPlaylistRepository _playlists;
 
-    public MusicService(IMusicRepository music)
+    public MusicService(IMusicRepository music, IPlaylistRepository playlists)
     {
         _music = music;
+        _playlists = playlists;
     }
 
     public async Task<MusicResponse> CreateAsync(CreateMusicRequest req, CancellationToken ct = default)
@@ -77,6 +79,44 @@ public sealed class MusicService : IMusicService
         if (!ok) throw new ApiException(HttpStatusCode.NotFound, "Music not found.");
     }
 
+    public async Task<MusicResponse> AddLabelAsync(string userId, string musicId, AddLabelRequest req, CancellationToken ct = default)
+    {
+        var track = await _music.GetByIdAsync(musicId, ct);
+        if (track is null) throw new ApiException(HttpStatusCode.NotFound, "Music not found.");
+
+        var label = req.Label.Trim();
+
+        // Add label to the track if not already present
+        if (!track.Labels.Any(l => l.Equals(label, StringComparison.OrdinalIgnoreCase)))
+        {
+            track.Labels.Add(label);
+            await _music.UpdateAsync(track, ct);
+        }
+
+        // Find or create a playlist matching this label for the user
+        var userPlaylists = await _playlists.GetForUserAsync(userId, ct);
+        var playlist = userPlaylists.FirstOrDefault(p => p.Name.Equals(label, StringComparison.OrdinalIgnoreCase));
+
+        if (playlist is null)
+        {
+            playlist = new Playlist
+            {
+                UserId = userId,
+                Name = label,
+                MusicIds = new List<string> { musicId },
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            await _playlists.CreateAsync(playlist, ct);
+        }
+        else if (!playlist.MusicIds.Contains(musicId))
+        {
+            playlist.MusicIds.Add(musicId);
+            await _playlists.UpdateAsync(playlist, ct);
+        }
+
+        return Map(track);
+    }
+
     private static MusicResponse Map(MusicTrack x) => new()
     {
         Id = x.Id,
@@ -88,6 +128,6 @@ public sealed class MusicService : IMusicService
         DurationSeconds = x.DurationSeconds,
         CoverImage = x.CoverImage,
         UploadedAtUtc = x.UploadedAtUtc,
+        Labels = x.Labels,
     };
 }
-

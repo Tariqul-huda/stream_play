@@ -80,7 +80,7 @@ class SettingsPage extends StatelessWidget {
             onChanged: (bool value) {
               // TODO: implement
             },
-            activeColor: ColorTheme.neonLabelColor,
+            activeThumbColor: ColorTheme.neonLabelColor,
           ),
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),

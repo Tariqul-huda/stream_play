@@ -11,5 +11,6 @@ public sealed class MusicResponse
     public double DurationSeconds { get; set; }
     public string? CoverImage { get; set; }
     public DateTime UploadedAtUtc { get; set; }
+    public List<string> Labels { get; set; } = new();
 }
 

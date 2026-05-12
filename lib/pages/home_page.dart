@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
 import '../color/color_scheme.dart';
 import '../components/home_view.dart';
+import '../components/library_view.dart';
 import '../components/mini_player.dart';
 import '../pages/settings_page.dart';
 
@@ -18,7 +18,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _pages = [
     const HomeView(),
     const Center(child: Text("Search", style: TextStyle(color: Colors.white, fontSize: 24))),
-    const Center(child: Text("Your Library", style: TextStyle(color: Colors.white, fontSize: 24))),
+    const LibraryView(),
   ];
 
   void _onItemTapped(int index) {

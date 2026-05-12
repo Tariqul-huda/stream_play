@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StreamPlay.Api.DTOs.Common;
 using StreamPlay.Api.DTOs.Music;
+using StreamPlay.Api.Helpers;
 using StreamPlay.Api.Services;
 
 namespace StreamPlay.Api.Controllers;
@@ -43,5 +44,10 @@ public sealed class MusicController : ControllerBase
         await _music.DeleteAsync(id, ct);
         return NoContent();
     }
+
+    [HttpPut("{id}/label")]
+    public async Task<ActionResult<MusicResponse>> AddLabel([FromRoute] string id, AddLabelRequest req, CancellationToken ct)
+        => Ok(await _music.AddLabelAsync(User.GetUserId(), id, req, ct));
 }
+
 

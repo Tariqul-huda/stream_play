@@ -18,6 +18,7 @@ public sealed class MongoDbContext
     public IMongoCollection<User> Users => _db.GetCollection<User>("users");
     public IMongoCollection<MusicTrack> Music => _db.GetCollection<MusicTrack>("music");
     public IMongoCollection<Playlist> Playlists => _db.GetCollection<Playlist>("playlists");
+    public IMongoCollection<Folder> Folders => _db.GetCollection<Folder>("folders");
     public IMongoCollection<UserSettings> Settings => _db.GetCollection<UserSettings>("settings");
 
     public async Task EnsureIndexesAsync()
@@ -56,6 +57,14 @@ public sealed class MongoDbContext
             new CreateIndexModel<Playlist>(
                 Builders<Playlist>.IndexKeys.Ascending(x => x.UserId),
                 new CreateIndexOptions { Name = "idx_playlist_user" }
+            )
+        );
+
+        // Folders: user lookup
+        await Folders.Indexes.CreateOneAsync(
+            new CreateIndexModel<Folder>(
+                Builders<Folder>.IndexKeys.Ascending(x => x.UserId),
+                new CreateIndexOptions { Name = "idx_folder_user" }
             )
         );
 

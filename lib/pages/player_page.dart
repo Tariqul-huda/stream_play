@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/audio_player_service.dart';
 import '../services/playlist_service.dart';
-import '../models/playlist_song.dart';
 import '../color/color_scheme.dart';
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key});
@@ -19,12 +18,6 @@ class _PlayerPageState extends State<PlayerPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No song playing')));
       return;
     }
-    
-    final currentSong = PlaylistSong(
-      title: _audioService.currentTrackTitle!,
-      path: _audioService.currentPath!,
-      isUrl: _audioService.currentPath!.startsWith('http'),
-    );
 
     final TextEditingController newPlaylistController = TextEditingController();
 
@@ -57,7 +50,9 @@ class _PlayerPageState extends State<PlayerPage> {
                             leading: const Icon(Icons.playlist_play, color: Colors.white),
                             title: Text(playlists[index].name, style: const TextStyle(color: Colors.white)),
                             onTap: () async {
-                              await _playlistService.addSongToPlaylist(playlists[index].name, currentSong);
+                              // Use the current track path as the musicId
+                              final musicId = _audioService.currentPath!;
+                              await _playlistService.addSongToPlaylist(playlists[index].id, musicId);
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added to ${playlists[index].name}')));
@@ -92,8 +87,11 @@ class _PlayerPageState extends State<PlayerPage> {
                         onPressed: () async {
                           if (newPlaylistController.text.trim().isNotEmpty) {
                             final name = newPlaylistController.text.trim();
-                            await _playlistService.createPlaylist(name);
-                            await _playlistService.addSongToPlaylist(name, currentSong);
+                            final newPlaylist = await _playlistService.createPlaylist(name);
+                            if (newPlaylist != null) {
+                              final musicId = _audioService.currentPath!;
+                              await _playlistService.addSongToPlaylist(newPlaylist.id, musicId);
+                            }
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created $name and added song')));

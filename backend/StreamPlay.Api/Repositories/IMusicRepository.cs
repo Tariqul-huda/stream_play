@@ -10,5 +10,7 @@ public interface IMusicRepository
     Task<IReadOnlyList<MusicTrack>> SearchAsync(string qNormalized, int limit, CancellationToken ct = default);
     Task<bool> DeleteAsync(string id, CancellationToken ct = default);
     Task<bool> ExistsByFilePathAsync(string filePathNormalized, CancellationToken ct = default);
+    Task<MusicTrack?> GetByIdAsync(string id, CancellationToken ct = default);
+    Task UpdateAsync(MusicTrack track, CancellationToken ct = default);
 }
 

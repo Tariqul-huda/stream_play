@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/env.dart';
-import '../models/playlist_model.dart';
+import '../models/folder_model.dart';
 import 'auth_storage.dart';
 
-class PlaylistService {
+class FolderService {
   final AuthStorage _storage = AuthStorage();
 
   Future<Map<String, String>> _authHeaders() async {
@@ -22,57 +22,45 @@ class PlaylistService {
     return Uri.parse('$normalizedBase$normalizedPath');
   }
 
-  Future<List<PlaylistModel>> getPlaylists() async {
+  Future<List<FolderModel>> getFolders() async {
     final res = await http.get(
-      _uri('/api/playlists'),
+      _uri('/api/folders'),
       headers: await _authHeaders(),
     );
     if (res.statusCode >= 200 && res.statusCode < 300) {
       final List<dynamic> data = jsonDecode(res.body);
-      return data.map((item) => PlaylistModel.fromJson(item as Map<String, dynamic>)).toList();
+      return data.map((item) => FolderModel.fromJson(item as Map<String, dynamic>)).toList();
     }
     return [];
   }
 
-  Future<PlaylistModel?> createPlaylist(String name) async {
+  Future<FolderModel?> createFolder(String name) async {
     final res = await http.post(
-      _uri('/api/playlists'),
+      _uri('/api/folders'),
       headers: await _authHeaders(),
       body: jsonEncode({'name': name}),
     );
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      return FolderModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
     }
     return null;
   }
 
-  Future<PlaylistModel?> addSongToPlaylist(String playlistId, String musicId) async {
+  Future<FolderModel?> addPlaylistToFolder(String folderId, String playlistId) async {
     final res = await http.post(
-      _uri('/api/playlists/$playlistId/add'),
+      _uri('/api/folders/$folderId/add-playlist'),
       headers: await _authHeaders(),
-      body: jsonEncode({'musicId': musicId}),
+      body: jsonEncode({'playlistId': playlistId}),
     );
     if (res.statusCode >= 200 && res.statusCode < 300) {
-      return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      return FolderModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
     }
     return null;
   }
 
-  Future<PlaylistModel?> removeSongFromPlaylist(String playlistId, String musicId) async {
-    final res = await http.post(
-      _uri('/api/playlists/$playlistId/remove'),
-      headers: await _authHeaders(),
-      body: jsonEncode({'musicId': musicId}),
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
-    }
-    return null;
-  }
-
-  Future<bool> deletePlaylist(String playlistId) async {
+  Future<bool> deleteFolder(String folderId) async {
     final res = await http.delete(
-      _uri('/api/playlists/$playlistId'),
+      _uri('/api/folders/$folderId'),
       headers: await _authHeaders(),
     );
     return res.statusCode >= 200 && res.statusCode < 300;

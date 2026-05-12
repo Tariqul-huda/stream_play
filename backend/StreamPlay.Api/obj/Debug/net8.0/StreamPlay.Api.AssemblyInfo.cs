@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("StreamPlay.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0a70f7e1332d889286bd1cfc9a653a7bba1bce33")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9ec5d10bf00f1a03cd5291cc899fbb2dca2f4d1a")]
 [assembly: System.Reflection.AssemblyProductAttribute("StreamPlay.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("StreamPlay.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

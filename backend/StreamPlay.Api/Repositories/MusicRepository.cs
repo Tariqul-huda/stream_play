@@ -68,5 +68,14 @@ public sealed class MusicRepository : IMusicRepository
         var count = await _db.Music.CountDocumentsAsync(x => x.FilePathNormalized == filePathNormalized, cancellationToken: ct);
         return count > 0;
     }
+
+    public async Task<MusicTrack?> GetByIdAsync(string id, CancellationToken ct = default)
+    {
+        return await _db.Music.Find(x => x.Id == id)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public Task UpdateAsync(MusicTrack track, CancellationToken ct = default)
+        => _db.Music.ReplaceOneAsync(x => x.Id == track.Id, track, cancellationToken: ct);
 }
 

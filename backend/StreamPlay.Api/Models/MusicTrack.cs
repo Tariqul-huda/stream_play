@@ -30,5 +30,7 @@ public sealed class MusicTrack
     public DateTime UploadedAtUtc { get; set; } = DateTime.UtcNow;
 
     public string? FileHashSha256 { get; set; }
+
+    public List<string> Labels { get; set; } = new();
 }
 
