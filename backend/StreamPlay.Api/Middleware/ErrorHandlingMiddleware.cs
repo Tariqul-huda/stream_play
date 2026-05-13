@@ -23,6 +23,8 @@ public sealed class ErrorHandlingMiddleware
         }
         catch (ApiException ex)
         {
+            EnsureCorsHeaders(context);
+
             context.Response.ContentType = "application/problem+json";
             context.Response.StatusCode = (int)ex.StatusCode;
 
@@ -39,6 +41,8 @@ public sealed class ErrorHandlingMiddleware
         {
             _logger.LogError(ex, "Unhandled exception");
 
+            EnsureCorsHeaders(context);
+
             context.Response.ContentType = "application/problem+json";
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
@@ -54,5 +58,21 @@ public sealed class ErrorHandlingMiddleware
             await context.Response.WriteAsJsonAsync(problem);
         }
     }
+
+    /// <summary>
+    /// Ensures CORS headers are present on error responses so the browser
+    /// doesn't mask the real error with a generic "Failed to fetch".
+    /// </summary>
+    private static void EnsureCorsHeaders(HttpContext context)
+    {
+        var headers = context.Response.Headers;
+        if (!headers.ContainsKey("Access-Control-Allow-Origin"))
+        {
+            headers["Access-Control-Allow-Origin"] = "*";
+            headers["Access-Control-Allow-Methods"] = "*";
+            headers["Access-Control-Allow-Headers"] = "*";
+        }
+    }
 }
+
 

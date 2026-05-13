@@ -50,12 +50,29 @@ class _PlayerPageState extends State<PlayerPage> {
                             leading: const Icon(Icons.playlist_play, color: Colors.white),
                             title: Text(playlists[index].name, style: const TextStyle(color: Colors.white)),
                             onTap: () async {
-                              // Use the current track path as the musicId
-                              final musicId = _audioService.currentPath!;
-                              await _playlistService.addSongToPlaylist(playlists[index].id, musicId);
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added to ${playlists[index].name}')));
+                              try {
+                                // On web, currentPath may be a huge data URI.
+                                // Use track title as identifier in that case.
+                                String musicId = _audioService.currentPath ?? '';
+                                if (musicId.startsWith('data:') || musicId.startsWith('blob:')) {
+                                  musicId = _audioService.currentTrackTitle ?? 'unknown';
+                                }
+                                final result = await _playlistService.addSongToPlaylist(playlists[index].id, musicId);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                    content: Text(result != null
+                                        ? 'Added to ${playlists[index].name}'
+                                        : 'Failed to add song'),
+                                  ));
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
                               }
                             },
                           );
@@ -89,7 +106,10 @@ class _PlayerPageState extends State<PlayerPage> {
                             final name = newPlaylistController.text.trim();
                             final newPlaylist = await _playlistService.createPlaylist(name);
                             if (newPlaylist != null) {
-                              final musicId = _audioService.currentPath!;
+                              String musicId = _audioService.currentPath ?? '';
+                              if (musicId.startsWith('data:') || musicId.startsWith('blob:')) {
+                                musicId = _audioService.currentTrackTitle ?? 'unknown';
+                              }
                               await _playlistService.addSongToPlaylist(newPlaylist.id, musicId);
                             }
                             if (context.mounted) {

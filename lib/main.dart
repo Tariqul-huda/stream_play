@@ -6,6 +6,7 @@ import './services/audio_player_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await AudioPlayerService.initBackground();
   await AudioPlayerService().init();
   runApp(const MyApp());
 }

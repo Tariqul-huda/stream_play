@@ -11,6 +11,7 @@ public interface IMusicRepository
     Task<bool> DeleteAsync(string id, CancellationToken ct = default);
     Task<bool> ExistsByFilePathAsync(string filePathNormalized, CancellationToken ct = default);
     Task<MusicTrack?> GetByIdAsync(string id, CancellationToken ct = default);
+    Task<MusicTrack?> GetByFilePathAsync(string filePathNormalized, CancellationToken ct = default);
     Task UpdateAsync(MusicTrack track, CancellationToken ct = default);
 }
 

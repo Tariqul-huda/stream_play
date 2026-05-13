@@ -75,6 +75,12 @@ public sealed class MusicRepository : IMusicRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<MusicTrack?> GetByFilePathAsync(string filePathNormalized, CancellationToken ct = default)
+    {
+        return await _db.Music.Find(x => x.FilePathNormalized == filePathNormalized)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public Task UpdateAsync(MusicTrack track, CancellationToken ct = default)
         => _db.Music.ReplaceOneAsync(x => x.Id == track.Id, track, cancellationToken: ct);
 }

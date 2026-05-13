@@ -12,10 +12,12 @@ namespace StreamPlay.Api.Controllers;
 public sealed class PlaylistsController : ControllerBase
 {
     private readonly IPlaylistService _playlists;
+    private readonly ILogger<PlaylistsController> _logger;
 
-    public PlaylistsController(IPlaylistService playlists)
+    public PlaylistsController(IPlaylistService playlists, ILogger<PlaylistsController> logger)
     {
         _playlists = playlists;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -27,8 +29,21 @@ public sealed class PlaylistsController : ControllerBase
         => Ok(await _playlists.GetForUserAsync(User.GetUserId(), ct));
 
     [HttpPost("{id}/add")]
-    public async Task<ActionResult<PlaylistResponse>> AddSong([FromRoute] string id, ModifyPlaylistSongRequest req, CancellationToken ct)
-        => Ok(await _playlists.AddSongAsync(User.GetUserId(), id, req.MusicId, ct));
+    public async Task<IActionResult> AddSong([FromRoute] string id, ModifyPlaylistSongRequest req, CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("AddSong: playlist={Id}, musicId={MusicId}", id, req.MusicId);
+            var result = await _playlists.AddSongAsync(User.GetUserId(), id, req.MusicId, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AddSong failed for playlist {Id}", id);
+            Response.Headers["Access-Control-Allow-Origin"] = "*";
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 
     [HttpPost("{id}/remove")]
     public async Task<ActionResult<PlaylistResponse>> RemoveSong([FromRoute] string id, ModifyPlaylistSongRequest req, CancellationToken ct)

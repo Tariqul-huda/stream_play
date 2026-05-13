@@ -44,6 +44,77 @@ public sealed class MusicService : IMusicService
         return Map(track);
     }
 
+    public async Task<IReadOnlyList<MusicResponse>> BulkCreateAsync(string userId, IReadOnlyList<CreateMusicRequest> requests, CancellationToken ct = default)
+    {
+        var created = new List<MusicTrack>();
+
+        foreach (var req in requests)
+        {
+            if (string.IsNullOrWhiteSpace(req.FilePath) || string.IsNullOrWhiteSpace(req.Title))
+                continue;
+
+            var filePathNorm = Normalization.Norm(req.FilePath);
+            if (await _music.ExistsByFilePathAsync(filePathNorm, ct))
+            {
+                // Already exists – look it up so we can still add to playlist
+                var existing = await _music.GetByFilePathAsync(filePathNorm, ct);
+                if (existing is not null) created.Add(existing);
+                continue;
+            }
+
+            var track = new MusicTrack
+            {
+                Title = req.Title.Trim(),
+                TitleNormalized = Normalization.Norm(req.Title),
+                Artist = req.Artist.Trim(),
+                ArtistNormalized = Normalization.Norm(req.Artist),
+                Album = string.IsNullOrWhiteSpace(req.Album) ? null : req.Album.Trim(),
+                Genre = string.IsNullOrWhiteSpace(req.Genre) ? null : req.Genre.Trim(),
+                GenreNormalized = string.IsNullOrWhiteSpace(req.Genre) ? null : Normalization.Norm(req.Genre),
+                FilePath = req.FilePath.Trim(),
+                FilePathNormalized = filePathNorm,
+                DurationSeconds = req.DurationSeconds,
+                CoverImage = req.CoverImage,
+                UploadedAtUtc = DateTime.UtcNow,
+            };
+
+            await _music.CreateAsync(track, ct);
+            created.Add(track);
+        }
+
+        // Auto-create / update "Local" playlist
+        if (created.Count > 0)
+        {
+            var userPlaylists = await _playlists.GetForUserAsync(userId, ct);
+            var localPlaylist = userPlaylists.FirstOrDefault(p => p.Name.Equals("Local", StringComparison.OrdinalIgnoreCase));
+
+            var newIds = created.Select(t => t.Id).ToList();
+
+            if (localPlaylist is null)
+            {
+                localPlaylist = new Playlist
+                {
+                    UserId = userId,
+                    Name = "Local",
+                    MusicIds = newIds,
+                    CreatedAtUtc = DateTime.UtcNow,
+                };
+                await _playlists.CreateAsync(localPlaylist, ct);
+            }
+            else
+            {
+                foreach (var id in newIds)
+                {
+                    if (!localPlaylist.MusicIds.Contains(id))
+                        localPlaylist.MusicIds.Add(id);
+                }
+                await _playlists.UpdateAsync(localPlaylist, ct);
+            }
+        }
+
+        return created.Select(Map).ToList();
+    }
+
     public async Task<PagedResponse<MusicResponse>> GetPagedAsync(int page, int pageSize, CancellationToken ct = default)
     {
         var (items, total) = await _music.GetPagedAsync(page, pageSize, ct);
@@ -115,6 +186,12 @@ public sealed class MusicService : IMusicService
         }
 
         return Map(track);
+    }
+
+    public async Task<MusicResponse?> FindByPathAsync(string filePath, CancellationToken ct = default)
+    {
+        var track = await _music.GetByFilePathAsync(Normalization.Norm(filePath), ct);
+        return track is null ? null : Map(track);
     }
 
     private static MusicResponse Map(MusicTrack x) => new()

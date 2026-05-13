@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/env.dart';
 import '../models/playlist_model.dart';
@@ -23,58 +24,84 @@ class PlaylistService {
   }
 
   Future<List<PlaylistModel>> getPlaylists() async {
-    final res = await http.get(
-      _uri('/api/playlists'),
-      headers: await _authHeaders(),
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      final List<dynamic> data = jsonDecode(res.body);
-      return data.map((item) => PlaylistModel.fromJson(item as Map<String, dynamic>)).toList();
+    try {
+      final res = await http.get(
+        _uri('/api/playlists'),
+        headers: await _authHeaders(),
+      );
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final List<dynamic> data = jsonDecode(res.body);
+        return data.map((item) => PlaylistModel.fromJson(item as Map<String, dynamic>)).toList();
+      }
+      debugPrint('[PlaylistService] getPlaylists failed: ${res.statusCode} ${res.body}');
+    } catch (e, st) {
+      debugPrint('[PlaylistService] getPlaylists error: $e\n$st');
     }
     return [];
   }
 
   Future<PlaylistModel?> createPlaylist(String name) async {
-    final res = await http.post(
-      _uri('/api/playlists'),
-      headers: await _authHeaders(),
-      body: jsonEncode({'name': name}),
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    try {
+      final res = await http.post(
+        _uri('/api/playlists'),
+        headers: await _authHeaders(),
+        body: jsonEncode({'name': name}),
+      );
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      }
+      debugPrint('[PlaylistService] createPlaylist failed: ${res.statusCode} ${res.body}');
+    } catch (e, st) {
+      debugPrint('[PlaylistService] createPlaylist error: $e\n$st');
     }
     return null;
   }
 
   Future<PlaylistModel?> addSongToPlaylist(String playlistId, String musicId) async {
-    final res = await http.post(
-      _uri('/api/playlists/$playlistId/add'),
-      headers: await _authHeaders(),
-      body: jsonEncode({'musicId': musicId}),
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    try {
+      final res = await http.post(
+        _uri('/api/playlists/$playlistId/add'),
+        headers: await _authHeaders(),
+        body: jsonEncode({'musicId': musicId}),
+      );
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      }
+      debugPrint('[PlaylistService] addSongToPlaylist failed: ${res.statusCode} ${res.body}');
+    } catch (e, st) {
+      debugPrint('[PlaylistService] addSongToPlaylist error: $e\n$st');
     }
     return null;
   }
 
   Future<PlaylistModel?> removeSongFromPlaylist(String playlistId, String musicId) async {
-    final res = await http.post(
-      _uri('/api/playlists/$playlistId/remove'),
-      headers: await _authHeaders(),
-      body: jsonEncode({'musicId': musicId}),
-    );
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    try {
+      final res = await http.post(
+        _uri('/api/playlists/$playlistId/remove'),
+        headers: await _authHeaders(),
+        body: jsonEncode({'musicId': musicId}),
+      );
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        return PlaylistModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      }
+      debugPrint('[PlaylistService] removeSongFromPlaylist failed: ${res.statusCode} ${res.body}');
+    } catch (e, st) {
+      debugPrint('[PlaylistService] removeSongFromPlaylist error: $e\n$st');
     }
     return null;
   }
 
   Future<bool> deletePlaylist(String playlistId) async {
-    final res = await http.delete(
-      _uri('/api/playlists/$playlistId'),
-      headers: await _authHeaders(),
-    );
-    return res.statusCode >= 200 && res.statusCode < 300;
+    try {
+      final res = await http.delete(
+        _uri('/api/playlists/$playlistId'),
+        headers: await _authHeaders(),
+      );
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } catch (e, st) {
+      debugPrint('[PlaylistService] deletePlaylist error: $e\n$st');
+      return false;
+    }
   }
 }
+

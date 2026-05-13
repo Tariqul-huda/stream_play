@@ -13,15 +13,35 @@ namespace StreamPlay.Api.Controllers;
 public sealed class MusicController : ControllerBase
 {
     private readonly IMusicService _music;
+    private readonly ILogger<MusicController> _logger;
 
-    public MusicController(IMusicService music)
+    public MusicController(IMusicService music, ILogger<MusicController> logger)
     {
         _music = music;
+        _logger = logger;
     }
 
     [HttpPost]
     public async Task<ActionResult<MusicResponse>> Create(CreateMusicRequest req, CancellationToken ct)
         => Ok(await _music.CreateAsync(req, ct));
+
+    [HttpPost("bulk")]
+    public async Task<IActionResult> BulkCreate(List<CreateMusicRequest> requests, CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation("BulkCreate called with {Count} items", requests?.Count ?? 0);
+            var result = await _music.BulkCreateAsync(User.GetUserId(), requests ?? new(), ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BulkCreate failed");
+            // Return error with CORS headers so the browser doesn't hide the message
+            Response.Headers["Access-Control-Allow-Origin"] = "*";
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 
     [HttpGet]
     public async Task<ActionResult<PagedResponse<MusicResponse>>> GetAll(
@@ -43,6 +63,14 @@ public sealed class MusicController : ControllerBase
     {
         await _music.DeleteAsync(id, ct);
         return NoContent();
+    }
+
+    [HttpGet("by-path")]
+    public async Task<ActionResult<MusicResponse>> ByPath([FromQuery] string path, CancellationToken ct)
+    {
+        var track = await _music.FindByPathAsync(path, ct);
+        if (track is null) return NotFound("Music not found for path.");
+        return Ok(track);
     }
 
     [HttpPut("{id}/label")]

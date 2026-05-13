@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+import 'package:audio_service/audio_service.dart';
 
 class AudioPlayerService extends ChangeNotifier {
   static final AudioPlayerService _instance = AudioPlayerService._internal();
@@ -29,24 +31,33 @@ class AudioPlayerService extends ChangeNotifier {
   Duration _totalDuration = Duration.zero;
   Duration get totalDuration => _totalDuration;
 
+  /// Call once at app startup (before runApp).
+  static Future<void> initBackground() async {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.streamplay.audio',
+      androidNotificationChannelName: 'StreamPlay Audio',
+      androidNotificationOngoing: true,
+    );
+  }
+
   Future<void> init() async {
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      _isPlaying = state == PlayerState.playing;
+    _audioPlayer.playerStateStream.listen((state) {
+      _isPlaying = state.playing;
       notifyListeners();
     });
 
-    _audioPlayer.onDurationChanged.listen((newDuration) {
-      _totalDuration = newDuration;
+    _audioPlayer.durationStream.listen((duration) {
+      _totalDuration = duration ?? Duration.zero;
       notifyListeners();
     });
 
-    _audioPlayer.onPositionChanged.listen((newPosition) {
-      _currentPosition = newPosition;
+    _audioPlayer.positionStream.listen((position) {
+      _currentPosition = position;
       notifyListeners();
     });
 
-    _audioPlayer.onPlayerComplete.listen((event) {
-      if (!_isLooping) {
+    _audioPlayer.processingStateStream.listen((state) {
+      if (state == ProcessingState.completed && !_isLooping) {
         _isPlaying = false;
         _currentPosition = Duration.zero;
         notifyListeners();
@@ -60,8 +71,43 @@ class AudioPlayerService extends ChangeNotifier {
     _currentPath = path;
     _currentPlaylistName = playlistName;
     notifyListeners();
-    
-    await _audioPlayer.play(DeviceFileSource(path));
+
+    try {
+      AudioSource source;
+
+      if (kIsWeb) {
+        // On web, path might be a data URI, blob URL, or just a filename.
+        // If it's a data/blob URI, play it directly. Otherwise, we can't play.
+        if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http')) {
+          source = AudioSource.uri(
+            Uri.parse(path),
+            tag: MediaItem(
+              id: path,
+              title: fileName,
+              artist: playlistName ?? 'Local',
+            ),
+          );
+        } else {
+          debugPrint('[AudioPlayerService] Cannot play local file on web: $path');
+          return;
+        }
+      } else {
+        // Native platforms: use file URI
+        source = AudioSource.uri(
+          Uri.file(path),
+          tag: MediaItem(
+            id: path,
+            title: fileName,
+            artist: playlistName ?? 'Local',
+          ),
+        );
+      }
+
+      await _audioPlayer.setAudioSource(source);
+      await _audioPlayer.play();
+    } catch (e) {
+      debugPrint('[AudioPlayerService] playLocalFile error: $e');
+    }
   }
 
   /// Plays from a URL (e.g. YouTube extracted stream in the future).
@@ -71,7 +117,20 @@ class AudioPlayerService extends ChangeNotifier {
     _currentPlaylistName = playlistName;
     notifyListeners();
 
-    await _audioPlayer.play(UrlSource(url));
+    try {
+      final source = AudioSource.uri(
+        Uri.parse(url),
+        tag: MediaItem(
+          id: url,
+          title: title,
+          artist: playlistName ?? 'Stream',
+        ),
+      );
+      await _audioPlayer.setAudioSource(source);
+      await _audioPlayer.play();
+    } catch (e) {
+      debugPrint('[AudioPlayerService] playUrl error: $e');
+    }
   }
 
   Future<void> pause() async {
@@ -79,9 +138,9 @@ class AudioPlayerService extends ChangeNotifier {
   }
 
   Future<void> resume() async {
-    await _audioPlayer.resume();
+    await _audioPlayer.play();
   }
-  
+
   Future<void> togglePlayPause() async {
     if (_isPlaying) {
       await pause();
@@ -92,7 +151,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   Future<void> toggleLoop() async {
     _isLooping = !_isLooping;
-    await _audioPlayer.setReleaseMode(_isLooping ? ReleaseMode.loop : ReleaseMode.release);
+    await _audioPlayer.setLoopMode(_isLooping ? LoopMode.one : LoopMode.off);
     notifyListeners();
   }
 

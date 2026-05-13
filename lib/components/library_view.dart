@@ -4,6 +4,7 @@ import '../models/playlist_model.dart';
 import '../models/folder_model.dart';
 import '../services/playlist_service.dart';
 import '../services/folder_service.dart';
+import '../services/audio_player_service.dart';
 
 class LibraryView extends StatefulWidget {
   const LibraryView({super.key});
@@ -326,8 +327,15 @@ class _LibraryViewState extends State<LibraryView> with SingleTickerProviderStat
         return _FolderTile(
           folder: folder,
           playlists: folderPlaylists,
+          allPlaylists: _playlists,
           onDelete: () async {
             await _folderService.deleteFolder(folder.id);
+            _loadData();
+          },
+          onAddPlaylists: (selectedIds) async {
+            for (final playlistId in selectedIds) {
+              await _folderService.addPlaylistToFolder(folder.id, playlistId);
+            }
             _loadData();
           },
         );
@@ -351,73 +359,152 @@ class _PlaylistTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 48, height: 48,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                ColorTheme.neonLabelColor.withValues(alpha: 0.3),
-                ColorTheme.neonLabelColor.withValues(alpha: 0.1),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.only(bottom: 8),
+          leading: Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  ColorTheme.neonLabelColor.withValues(alpha: 0.3),
+                  ColorTheme.neonLabelColor.withValues(alpha: 0.1),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(8),
             ),
-            borderRadius: BorderRadius.circular(8),
+            child: const Icon(Icons.playlist_play, color: ColorTheme.neonLabelColor, size: 28),
           ),
-          child: const Icon(Icons.playlist_play, color: ColorTheme.neonLabelColor, size: 28),
-        ),
-        title: Text(playlist.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-        subtitle: Text(
-          '${playlist.musicIds.length} song${playlist.musicIds.length == 1 ? '' : 's'}',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
-        ),
-        trailing: IconButton(
-          icon: Icon(Icons.more_vert, color: Colors.white.withValues(alpha: 0.5)),
-          onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              backgroundColor: const Color(0xFF1E1E2C),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              builder: (ctx) => SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 40, height: 4,
-                      decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+          title: Text(playlist.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+          subtitle: Text(
+            '${playlist.musicIds.length} song${playlist.musicIds.length == 1 ? '' : 's'}',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(Icons.more_vert, color: Colors.white.withValues(alpha: 0.5)),
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: const Color(0xFF1E1E2C),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                     ),
-                    const SizedBox(height: 8),
-                    ListTile(
-                      leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                      title: const Text('Delete Playlist', style: TextStyle(color: Colors.redAccent)),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        onDelete();
-                      },
+                    builder: (ctx) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 8),
+                          Container(
+                            width: 40, height: 4,
+                            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                          ),
+                          const SizedBox(height: 8),
+                          ListTile(
+                            leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                            title: const Text('Delete Playlist', style: TextStyle(color: Colors.redAccent)),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onDelete();
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
+              Icon(Icons.expand_more, color: Colors.white.withValues(alpha: 0.4)),
+            ],
+          ),
+          iconColor: Colors.transparent,
+          collapsedIconColor: Colors.transparent,
+          children: playlist.musicIds.isEmpty
+              ? [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'No songs in this playlist',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 13),
+                    ),
+                  ),
+                ]
+              : playlist.musicIds.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final musicId = entry.value;
+                  // musicId might be a filename, file path, or MongoDB ObjectId
+                  final displayName = _extractDisplayName(musicId);
+                  return ListTile(
+                    dense: true,
+                    leading: Container(
+                      width: 32, height: 32,
+                      decoration: BoxDecoration(
+                        color: ColorTheme.neonLabelColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${idx + 1}',
+                          style: const TextStyle(color: ColorTheme.neonLabelColor, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    title: Text(displayName, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    trailing: const Icon(Icons.play_circle_outline, color: ColorTheme.neonLabelColor, size: 28),
+                    onTap: () {
+                      _playSong(musicId, displayName, playlist.name);
+                    },
+                  );
+                }).toList(),
         ),
       ),
     );
+  }
+
+  String _extractDisplayName(String musicId) {
+    // If it's a file path, extract just the filename
+    String name = musicId;
+    if (name.contains('/')) name = name.split('/').last;
+    if (name.contains('\\')) name = name.split('\\').last;
+    // Remove file extension
+    final dotIndex = name.lastIndexOf('.');
+    if (dotIndex > 0) name = name.substring(0, dotIndex);
+    return name;
+  }
+
+  void _playSong(String musicId, String displayName, String playlistName) {
+    final audioService = AudioPlayerService();
+    // If musicId looks like a file path, play as local file
+    if (musicId.contains('/') || musicId.contains('\\') || musicId.endsWith('.mp3') || musicId.endsWith('.wav') || musicId.endsWith('.m4a') || musicId.endsWith('.flac')) {
+      audioService.playLocalFile(musicId, displayName, playlistName: playlistName);
+    } else {
+      // Treat as a track identifier / title
+      audioService.playLocalFile(musicId, displayName, playlistName: playlistName);
+    }
   }
 }
 
 class _FolderTile extends StatelessWidget {
   final FolderModel folder;
   final List<PlaylistModel> playlists;
+  final List<PlaylistModel> allPlaylists;
   final VoidCallback onDelete;
+  final Function(List<String> selectedIds) onAddPlaylists;
 
-  const _FolderTile({required this.folder, required this.playlists, required this.onDelete});
+  const _FolderTile({
+    required this.folder,
+    required this.playlists,
+    required this.allPlaylists,
+    required this.onDelete,
+    required this.onAddPlaylists,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -474,6 +561,14 @@ class _FolderTile extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         ListTile(
+                          leading: const Icon(Icons.playlist_add, color: ColorTheme.neonLabelColor),
+                          title: const Text('Add Playlists', style: TextStyle(color: Colors.white)),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _showAddPlaylistsDialog(context);
+                          },
+                        ),
+                        ListTile(
                           leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
                           title: const Text('Delete Folder', style: TextStyle(color: Colors.redAccent)),
                           onTap: () {
@@ -506,6 +601,76 @@ class _FolderTile extends StatelessWidget {
                 title: Text(p.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
                 subtitle: Text('${p.musicIds.length} songs', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12)),
               )).toList(),
+      ),
+    );
+  }
+
+  void _showAddPlaylistsDialog(BuildContext context) {
+    // Filter to playlists not already in this folder
+    final available = allPlaylists.where((p) => !folder.playlistIds.contains(p.id)).toList();
+
+    if (available.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All playlists are already in this folder')),
+      );
+      return;
+    }
+
+    final selected = <String>{};
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2C),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Add Playlists to Folder', style: TextStyle(color: Colors.white)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: available.length,
+              itemBuilder: (ctx, index) {
+                final p = available[index];
+                final isSelected = selected.contains(p.id);
+                return CheckboxListTile(
+                  value: isSelected,
+                  activeColor: ColorTheme.neonLabelColor,
+                  checkColor: Colors.black,
+                  title: Text(p.name, style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(
+                    '${p.musicIds.length} song${p.musicIds.length == 1 ? '' : 's'}',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12),
+                  ),
+                  onChanged: (val) {
+                    setDialogState(() {
+                      if (val == true) {
+                        selected.add(p.id);
+                      } else {
+                        selected.remove(p.id);
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                if (selected.isNotEmpty) {
+                  onAddPlaylists(selected.toList());
+                }
+              },
+              child: const Text('Add', style: TextStyle(color: ColorTheme.neonLabelColor)),
+            ),
+          ],
+        ),
       ),
     );
   }

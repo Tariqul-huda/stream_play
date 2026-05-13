@@ -100,6 +100,9 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
+
+app.UseCors("FlutterDev");
+
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
@@ -107,8 +110,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseCors("FlutterDev");
 
 // Only redirect to HTTPS when the app is actually bound to an HTTPS endpoint.
 // This avoids noisy warnings when running HTTP-only in dev.
