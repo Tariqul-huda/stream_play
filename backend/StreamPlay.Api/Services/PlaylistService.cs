@@ -9,10 +9,12 @@ namespace StreamPlay.Api.Services;
 public sealed class PlaylistService : IPlaylistService
 {
     private readonly IPlaylistRepository _playlists;
+    private readonly IMusicRepository _music;
 
-    public PlaylistService(IPlaylistRepository playlists)
+    public PlaylistService(IPlaylistRepository playlists, IMusicRepository music)
     {
         _playlists = playlists;
+        _music = music;
     }
 
     public async Task<PlaylistResponse> CreateAsync(string userId, CreatePlaylistRequest req, CancellationToken ct = default)
@@ -26,13 +28,18 @@ public sealed class PlaylistService : IPlaylistService
         };
 
         await _playlists.CreateAsync(playlist, ct);
-        return Map(playlist);
+        return await MapAsync(playlist, ct);
     }
 
     public async Task<IReadOnlyList<PlaylistResponse>> GetForUserAsync(string userId, CancellationToken ct = default)
     {
         var items = await _playlists.GetForUserAsync(userId, ct);
-        return items.Select(Map).ToList();
+        var responses = new List<PlaylistResponse>();
+        foreach (var item in items)
+        {
+            responses.Add(await MapAsync(item, ct));
+        }
+        return responses;
     }
 
     public async Task<PlaylistResponse> AddSongAsync(string userId, string playlistId, string musicId, CancellationToken ct = default)
@@ -43,7 +50,7 @@ public sealed class PlaylistService : IPlaylistService
             playlist.MusicIds.Add(musicId);
             await _playlists.UpdateAsync(playlist, ct);
         }
-        return Map(playlist);
+        return await MapAsync(playlist, ct);
     }
 
     public async Task<PlaylistResponse> RemoveSongAsync(string userId, string playlistId, string musicId, CancellationToken ct = default)
@@ -51,7 +58,7 @@ public sealed class PlaylistService : IPlaylistService
         var playlist = await RequireOwnedPlaylistAsync(userId, playlistId, ct);
         playlist.MusicIds.RemoveAll(x => x == musicId);
         await _playlists.UpdateAsync(playlist, ct);
-        return Map(playlist);
+        return await MapAsync(playlist, ct);
     }
 
     public async Task DeleteAsync(string userId, string playlistId, CancellationToken ct = default)
@@ -68,12 +75,37 @@ public sealed class PlaylistService : IPlaylistService
         return playlist;
     }
 
-    private static PlaylistResponse Map(Playlist x) => new()
+    private async Task<PlaylistResponse> MapAsync(Playlist x, CancellationToken ct)
     {
-        Id = x.Id,
-        Name = x.Name,
-        MusicIds = x.MusicIds,
-        CreatedAtUtc = x.CreatedAtUtc,
-    };
+        var tracks = new List<StreamPlay.Api.DTOs.Music.MusicResponse>();
+        foreach (var id in x.MusicIds)
+        {
+            var track = await _music.GetByIdAsync(id, ct);
+            if (track != null)
+            {
+                tracks.Add(new StreamPlay.Api.DTOs.Music.MusicResponse
+                {
+                    Id = track.Id,
+                    Title = track.Title,
+                    Artist = track.Artist,
+                    Album = track.Album,
+                    Genre = track.Genre,
+                    FilePath = track.FilePath,
+                    DurationSeconds = track.DurationSeconds,
+                    CoverImage = track.CoverImage,
+                    UploadedAtUtc = track.UploadedAtUtc,
+                    Labels = track.Labels,
+                });
+            }
+        }
+        return new PlaylistResponse
+        {
+            Id = x.Id,
+            Name = x.Name,
+            MusicIds = x.MusicIds,
+            Tracks = tracks,
+            CreatedAtUtc = x.CreatedAtUtc,
+        };
+    }
 }
 

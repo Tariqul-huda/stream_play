@@ -426,7 +426,7 @@ class _PlaylistTile extends StatelessWidget {
           ),
           iconColor: Colors.transparent,
           collapsedIconColor: Colors.transparent,
-          children: playlist.musicIds.isEmpty
+          children: playlist.tracks.isEmpty
               ? [
                   Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -436,11 +436,12 @@ class _PlaylistTile extends StatelessWidget {
                     ),
                   ),
                 ]
-              : playlist.musicIds.asMap().entries.map((entry) {
+              : playlist.tracks.asMap().entries.map((entry) {
                   final idx = entry.key;
-                  final musicId = entry.value;
-                  // musicId might be a filename, file path, or MongoDB ObjectId
-                  final displayName = _extractDisplayName(musicId);
+                  final track = entry.value;
+                  final String filePath = track['filePath'] ?? '';
+                  final String title = track['title'] ?? 'Unknown Track';
+                  
                   return ListTile(
                     dense: true,
                     leading: Container(
@@ -456,10 +457,10 @@ class _PlaylistTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    title: Text(displayName, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 14)),
                     trailing: const Icon(Icons.play_circle_outline, color: ColorTheme.neonLabelColor, size: 28),
                     onTap: () {
-                      _playSong(musicId, displayName, playlist.name);
+                      _playSong(filePath, title, playlist.name);
                     },
                   );
                 }).toList(),
@@ -468,16 +469,6 @@ class _PlaylistTile extends StatelessWidget {
     );
   }
 
-  String _extractDisplayName(String musicId) {
-    // If it's a file path, extract just the filename
-    String name = musicId;
-    if (name.contains('/')) name = name.split('/').last;
-    if (name.contains('\\')) name = name.split('\\').last;
-    // Remove file extension
-    final dotIndex = name.lastIndexOf('.');
-    if (dotIndex > 0) name = name.substring(0, dotIndex);
-    return name;
-  }
 
   void _playSong(String musicId, String displayName, String playlistName) {
     final audioService = AudioPlayerService();

@@ -5,6 +5,7 @@ public sealed class PlaylistResponse
     public string Id { get; set; } = default!;
     public string Name { get; set; } = default!;
     public List<string> MusicIds { get; set; } = new();
+    public List<StreamPlay.Api.DTOs.Music.MusicResponse> Tracks { get; set; } = new();
     public DateTime CreatedAtUtc { get; set; }
 }
 
