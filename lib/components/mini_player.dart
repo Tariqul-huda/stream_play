@@ -54,7 +54,16 @@ class MiniPlayer extends StatelessWidget {
                           color: Colors.grey.shade800,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Icon(Icons.music_note, color: Colors.grey),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: audioService.currentCoverUrl != null && audioService.currentCoverUrl!.startsWith('http')
+                              ? Image.network(
+                                  audioService.currentCoverUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => const Icon(Icons.music_note, color: Colors.grey, size: 20),
+                                )
+                              : const Icon(Icons.music_note, color: Colors.grey, size: 20),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       // Song info
@@ -75,7 +84,7 @@ class MiniPlayer extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              "Local Audio",
+                              audioService.currentPlaylistName ?? "Local Audio",
                               style: TextStyle(
                                 color: Colors.grey.shade400,
                                 fontSize: 12,

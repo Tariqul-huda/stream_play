@@ -192,7 +192,16 @@ class _PlayerPageState extends State<PlayerPage> {
                       )
                     ],
                   ),
-                  child: const Icon(Icons.music_note, size: 100, color: Colors.grey),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _audioService.currentCoverUrl != null && _audioService.currentCoverUrl!.startsWith('http')
+                        ? Image.network(
+                            _audioService.currentCoverUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => const Icon(Icons.music_note, size: 100, color: Colors.grey),
+                          )
+                        : const Icon(Icons.music_note, size: 100, color: Colors.grey),
+                  ),
                 ),
                 const SizedBox(height: 40),
                 
@@ -208,7 +217,7 @@ class _PlayerPageState extends State<PlayerPage> {
                             _audioService.currentTrackTitle ?? "Not Playing",
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 24,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                             maxLines: 1,
@@ -224,7 +233,7 @@ class _PlayerPageState extends State<PlayerPage> {
                               ),
                               child: Text(
                                 _audioService.currentPlaylistName!,
-                                style: const TextStyle(color: ColorTheme.neonLabelColor, fontSize: 12),
+                                style: TextStyle(color: ColorTheme.neonLabelColor, fontSize: 12),
                               ),
                             )
                           else
@@ -249,9 +258,9 @@ class _PlayerPageState extends State<PlayerPage> {
                     trackHeight: 4,
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                    activeTrackColor: Colors.white,
+                    activeTrackColor: ColorTheme.neonLabelColor,
                     inactiveTrackColor: Colors.white24,
-                    thumbColor: Colors.white,
+                    thumbColor: ColorTheme.neonLabelColor,
                   ),
                   child: Slider(
                     min: 0,
@@ -283,10 +292,10 @@ class _PlayerPageState extends State<PlayerPage> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_previous, color: Colors.white, size: 36),
-                      onPressed: () {},
+                      onPressed: () => _audioService.playPrevious(),
                     ),
                     Container(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: ColorTheme.neonLabelColor,
                         shape: BoxShape.circle,
                       ),
@@ -301,7 +310,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_next, color: Colors.white, size: 36),
-                      onPressed: () {},
+                      onPressed: () => _audioService.playNext(),
                     ),
                     IconButton(
                       icon: Icon(Icons.repeat, color: _audioService.isLooping ? ColorTheme.neonLabelColor : Colors.white),

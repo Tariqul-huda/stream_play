@@ -4,6 +4,8 @@ import '../components/home_view.dart';
 import '../components/library_view.dart';
 import '../components/mini_player.dart';
 import '../pages/settings_page.dart';
+import '../pages/search_page.dart';
+import '../services/settings_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,12 +16,36 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  final SettingsService _settingsService = SettingsService();
 
   final List<Widget> _pages = [
     const HomeView(),
-    const Center(child: Text("Search", style: TextStyle(color: Colors.white, fontSize: 24))),
+    const SearchPage(),
     const LibraryView(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+    _settingsService.addListener(_onSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    _settingsService.removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (mounted) {
+      setState(() {}); // Re-render when theme or settings change
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    await _settingsService.loadSettings();
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -48,12 +74,12 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.person, color: ColorTheme.neonLabelColor),
+              leading: Icon(Icons.person, color: ColorTheme.activeNeonColor),
               title: const Text('View Profile', style: TextStyle(color: Colors.white)),
               onTap: () {},
             ),
             ListTile(
-              leading: const Icon(Icons.settings, color: ColorTheme.neonLabelColor),
+              leading: Icon(Icons.settings, color: ColorTheme.activeNeonColor),
               title: const Text('Settings & Privacy', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context); // close drawer
