@@ -19,7 +19,7 @@ class MiniPlayer extends StatelessWidget {
 
         final position = audioService.currentPosition;
         final duration = audioService.totalDuration;
-        
+
         double progress = 0.0;
         if (duration.inMilliseconds > 0) {
           progress = position.inMilliseconds / duration.inMilliseconds;
@@ -56,13 +56,25 @@ class MiniPlayer extends StatelessWidget {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
-                          child: audioService.currentCoverUrl != null && audioService.currentCoverUrl!.startsWith('http')
+                          child:
+                              audioService.currentCoverUrl != null &&
+                                  audioService.currentCoverUrl!.startsWith(
+                                    'http',
+                                  )
                               ? Image.network(
                                   audioService.currentCoverUrl!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (ctx, err, stack) => const Icon(Icons.music_note, color: Colors.grey, size: 20),
+                                  errorBuilder: (ctx, err, stack) => const Icon(
+                                    Icons.music_note,
+                                    color: Colors.grey,
+                                    size: 20,
+                                  ),
                                 )
-                              : const Icon(Icons.music_note, color: Colors.grey, size: 20),
+                              : const Icon(
+                                  Icons.music_note,
+                                  color: Colors.grey,
+                                  size: 20,
+                                ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -97,12 +109,21 @@ class MiniPlayer extends StatelessWidget {
                       ),
                       // Playback controls
                       IconButton(
-                        icon: const Icon(Icons.favorite_border, color: Colors.white),
-                        onPressed: () {},
+                        icon: Icon(
+                          audioService.isCurrentFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: audioService.isCurrentFavorite
+                              ? ColorTheme.neonLabelColor
+                              : Colors.white,
+                        ),
+                        onPressed: () => audioService.toggleCurrentFavorite(),
                       ),
                       IconButton(
                         icon: Icon(
-                          audioService.isPlaying ? Icons.pause : Icons.play_arrow,
+                          audioService.isPlaying
+                              ? Icons.pause
+                              : Icons.play_arrow,
                           color: Colors.white,
                         ),
                         onPressed: () => audioService.togglePlayPause(),
@@ -117,7 +138,9 @@ class MiniPlayer extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    valueColor: const AlwaysStoppedAnimation<Color>(ColorTheme.neonLabelColor),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      ColorTheme.neonLabelColor,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -129,4 +152,3 @@ class MiniPlayer extends StatelessWidget {
     );
   }
 }
-

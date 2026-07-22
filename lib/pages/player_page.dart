@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../services/audio_player_service.dart';
+import '../services/music_local_storage.dart';
 import '../services/playlist_service.dart';
 import '../color/color_scheme.dart';
+
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key});
 
@@ -12,10 +16,79 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   final AudioPlayerService _audioService = AudioPlayerService();
   final PlaylistService _playlistService = PlaylistService();
+  final MusicLocalStorage _storage = MusicLocalStorage.instance;
+  final TextEditingController _notesController = TextEditingController();
+
+  String? _activeTrackId;
+  Timer? _noteSaveDebounce;
+  bool _loadingNote = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioService.addListener(_onPlaybackChanged);
+    _syncNotesWithCurrentTrack();
+  }
+
+  @override
+  void dispose() {
+    _audioService.removeListener(_onPlaybackChanged);
+    _noteSaveDebounce?.cancel();
+    final currentTrackId = _audioService.currentTrackId;
+    if (currentTrackId != null) {
+      unawaited(_storage.saveNote(currentTrackId, _notesController.text));
+    }
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _onPlaybackChanged() {
+    _syncNotesWithCurrentTrack();
+  }
+
+  Future<void> _syncNotesWithCurrentTrack() async {
+    final trackId = _audioService.currentTrackId;
+    if (trackId == null || trackId == _activeTrackId) {
+      return;
+    }
+
+    final previousTrackId = _activeTrackId;
+    if (previousTrackId != null) {
+      await _storage.saveNote(previousTrackId, _notesController.text);
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    _activeTrackId = trackId;
+    setState(() => _loadingNote = true);
+
+    final note = _storage.noteFor(trackId);
+    if (mounted) {
+      _notesController.text = note;
+      setState(() => _loadingNote = false);
+    }
+  }
+
+  void _scheduleNoteSave(String value) {
+    final trackId = _audioService.currentTrackId;
+    if (trackId == null) {
+      return;
+    }
+
+    _noteSaveDebounce?.cancel();
+    _noteSaveDebounce = Timer(const Duration(milliseconds: 600), () async {
+      await _storage.saveNote(trackId, value);
+    });
+  }
 
   void _showAddToPlaylistBottomSheet(BuildContext context) {
-    if (_audioService.currentPath == null || _audioService.currentTrackTitle == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No song playing')));
+    if (_audioService.currentPath == null ||
+        _audioService.currentTrackTitle == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No song playing')));
       return;
     }
 
@@ -25,20 +98,38 @@ class _PlayerPageState extends State<PlayerPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.grey.shade900,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) {
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, top: 16, left: 16, right: 16),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 16,
+            left: 16,
+            right: 16,
+          ),
           child: FutureBuilder(
             future: _playlistService.getPlaylists(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox(height: 100, child: Center(child: CircularProgressIndicator()));
+              if (!snapshot.hasData)
+                return const SizedBox(
+                  height: 100,
+                  child: Center(child: CircularProgressIndicator()),
+                );
               final playlists = snapshot.data!;
-              
+
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Add to Playlist', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Add to Playlist',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   if (playlists.isNotEmpty)
                     Flexible(
@@ -47,24 +138,42 @@ class _PlayerPageState extends State<PlayerPage> {
                         itemCount: playlists.length,
                         itemBuilder: (context, index) {
                           return ListTile(
-                            leading: const Icon(Icons.playlist_play, color: Colors.white),
-                            title: Text(playlists[index].name, style: const TextStyle(color: Colors.white)),
+                            leading: const Icon(
+                              Icons.playlist_play,
+                              color: Colors.white,
+                            ),
+                            title: Text(
+                              playlists[index].name,
+                              style: const TextStyle(color: Colors.white),
+                            ),
                             onTap: () async {
                               try {
                                 // On web, currentPath may be a huge data URI.
                                 // Use track title as identifier in that case.
-                                String musicId = _audioService.currentPath ?? '';
-                                if (musicId.startsWith('data:') || musicId.startsWith('blob:')) {
-                                  musicId = _audioService.currentTrackTitle ?? 'unknown';
+                                String musicId =
+                                    _audioService.currentPath ?? '';
+                                if (musicId.startsWith('data:') ||
+                                    musicId.startsWith('blob:')) {
+                                  musicId =
+                                      _audioService.currentTrackTitle ??
+                                      'unknown';
                                 }
-                                final result = await _playlistService.addSongToPlaylist(playlists[index].id, musicId);
+                                final result = await _playlistService
+                                    .addSongToPlaylist(
+                                      playlists[index].id,
+                                      musicId,
+                                    );
                                 if (context.mounted) {
                                   Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                    content: Text(result != null
-                                        ? 'Added to ${playlists[index].name}'
-                                        : 'Failed to add song'),
-                                  ));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        result != null
+                                            ? 'Added to ${playlists[index].name}'
+                                            : 'Failed to add song',
+                                      ),
+                                    ),
+                                  );
                                 }
                               } catch (e) {
                                 if (context.mounted) {
@@ -82,7 +191,10 @@ class _PlayerPageState extends State<PlayerPage> {
                   else
                     const Padding(
                       padding: EdgeInsets.all(16.0),
-                      child: Text('No playlists yet.', style: TextStyle(color: Colors.grey)),
+                      child: Text(
+                        'No playlists yet.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   const Divider(color: Colors.white24),
                   Row(
@@ -94,27 +206,47 @@ class _PlayerPageState extends State<PlayerPage> {
                           decoration: const InputDecoration(
                             hintText: 'New playlist name',
                             hintStyle: TextStyle(color: Colors.white54),
-                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: ColorTheme.neonLabelColor)),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(color: Colors.white24),
+                            ),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: ColorTheme.neonLabelColor,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add, color: ColorTheme.neonLabelColor),
+                        icon: const Icon(
+                          Icons.add,
+                          color: ColorTheme.neonLabelColor,
+                        ),
                         onPressed: () async {
                           if (newPlaylistController.text.trim().isNotEmpty) {
                             final name = newPlaylistController.text.trim();
-                            final newPlaylist = await _playlistService.createPlaylist(name);
+                            final newPlaylist = await _playlistService
+                                .createPlaylist(name);
                             if (newPlaylist != null) {
                               String musicId = _audioService.currentPath ?? '';
-                              if (musicId.startsWith('data:') || musicId.startsWith('blob:')) {
-                                musicId = _audioService.currentTrackTitle ?? 'unknown';
+                              if (musicId.startsWith('data:') ||
+                                  musicId.startsWith('blob:')) {
+                                musicId =
+                                    _audioService.currentTrackTitle ??
+                                    'unknown';
                               }
-                              await _playlistService.addSongToPlaylist(newPlaylist.id, musicId);
+                              await _playlistService.addSongToPlaylist(
+                                newPlaylist.id,
+                                musicId,
+                              );
                             }
                             if (context.mounted) {
                               Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Created $name and added song')));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Created $name and added song'),
+                                ),
+                              );
                             }
                           }
                         },
@@ -146,7 +278,11 @@ class _PlayerPageState extends State<PlayerPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 32),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: Colors.white,
+            size: 32,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -166,7 +302,7 @@ class _PlayerPageState extends State<PlayerPage> {
         builder: (context, child) {
           final position = _audioService.currentPosition;
           final duration = _audioService.totalDuration;
-          
+
           double sliderValue = position.inSeconds.toDouble();
           double sliderMax = duration.inSeconds.toDouble();
           if (sliderMax == 0) sliderMax = 1; // Prevent division by zero
@@ -189,22 +325,32 @@ class _PlayerPageState extends State<PlayerPage> {
                         color: ColorTheme.neonLabelColor.withValues(alpha: 0.2),
                         blurRadius: 30,
                         spreadRadius: 5,
-                      )
+                      ),
                     ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: _audioService.currentCoverUrl != null && _audioService.currentCoverUrl!.startsWith('http')
+                    child:
+                        _audioService.currentCoverUrl != null &&
+                            _audioService.currentCoverUrl!.startsWith('http')
                         ? Image.network(
                             _audioService.currentCoverUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => const Icon(Icons.music_note, size: 100, color: Colors.grey),
+                            errorBuilder: (ctx, err, stack) => const Icon(
+                              Icons.music_note,
+                              size: 100,
+                              color: Colors.grey,
+                            ),
                           )
-                        : const Icon(Icons.music_note, size: 100, color: Colors.grey),
+                        : const Icon(
+                            Icons.music_note,
+                            size: 100,
+                            color: Colors.grey,
+                          ),
                   ),
                 ),
                 const SizedBox(height: 40),
-                
+
                 // Track Info
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -226,38 +372,140 @@ class _PlayerPageState extends State<PlayerPage> {
                           const SizedBox(height: 4),
                           if (_audioService.currentPlaylistName != null)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: ColorTheme.neonLabelColor.withValues(alpha: 0.2),
+                                color: ColorTheme.neonLabelColor.withValues(
+                                  alpha: 0.2,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 _audioService.currentPlaylistName!,
-                                style: TextStyle(color: ColorTheme.neonLabelColor, fontSize: 12),
+                                style: TextStyle(
+                                  color: ColorTheme.neonLabelColor,
+                                  fontSize: 12,
+                                ),
                               ),
                             )
                           else
                             const Text(
                               "Local Audio",
-                              style: TextStyle(color: Colors.grey, fontSize: 16),
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 16,
+                              ),
                             ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
+                      icon: const Icon(
+                        Icons.add_circle_outline,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                       onPressed: () => _showAddToPlaylistBottomSheet(context),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
 
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.notes_rounded,
+                            color: ColorTheme.neonLabelColor,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Lyrics / Comment / Notes',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_loadingNote)
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: ColorTheme.neonLabelColor,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _notesController,
+                        onChanged: _scheduleNoteSave,
+                        maxLines: 5,
+                        minLines: 3,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Write lyrics, ideas, or comments here...',
+                          hintStyle: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.35),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.04),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.06),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.06),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: ColorTheme.neonLabelColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
                 // Progress Bar
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 4,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 14,
+                    ),
                     activeTrackColor: ColorTheme.neonLabelColor,
                     inactiveTrackColor: Colors.white24,
                     thumbColor: ColorTheme.neonLabelColor,
@@ -271,13 +519,19 @@ class _PlayerPageState extends State<PlayerPage> {
                     },
                   ),
                 ),
-                
+
                 // Timestamps
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(_formatDuration(position), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                    Text(_formatDuration(duration), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text(
+                      _formatDuration(position),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    Text(
+                      _formatDuration(duration),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -291,7 +545,11 @@ class _PlayerPageState extends State<PlayerPage> {
                       onPressed: () {},
                     ),
                     IconButton(
-                      icon: const Icon(Icons.skip_previous, color: Colors.white, size: 36),
+                      icon: const Icon(
+                        Icons.skip_previous,
+                        color: Colors.white,
+                        size: 36,
+                      ),
                       onPressed: () => _audioService.playPrevious(),
                     ),
                     Container(
@@ -301,7 +559,9 @@ class _PlayerPageState extends State<PlayerPage> {
                       ),
                       child: IconButton(
                         icon: Icon(
-                          _audioService.isPlaying ? Icons.pause : Icons.play_arrow,
+                          _audioService.isPlaying
+                              ? Icons.pause
+                              : Icons.play_arrow,
                           color: Colors.black,
                           size: 40,
                         ),
@@ -309,11 +569,20 @@ class _PlayerPageState extends State<PlayerPage> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.skip_next, color: Colors.white, size: 36),
+                      icon: const Icon(
+                        Icons.skip_next,
+                        color: Colors.white,
+                        size: 36,
+                      ),
                       onPressed: () => _audioService.playNext(),
                     ),
                     IconButton(
-                      icon: Icon(Icons.repeat, color: _audioService.isLooping ? ColorTheme.neonLabelColor : Colors.white),
+                      icon: Icon(
+                        Icons.repeat,
+                        color: _audioService.isLooping
+                            ? ColorTheme.neonLabelColor
+                            : Colors.white,
+                      ),
                       onPressed: () => _audioService.toggleLoop(),
                     ),
                   ],

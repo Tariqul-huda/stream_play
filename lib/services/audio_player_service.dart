@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'music_local_storage.dart';
 import 'settings_service.dart';
 
 class AudioPlayerService extends ChangeNotifier {
@@ -26,6 +27,9 @@ class AudioPlayerService extends ChangeNotifier {
   String? _currentCoverUrl;
   String? get currentCoverUrl => _currentCoverUrl;
 
+  String? _currentTrackId;
+  String? get currentTrackId => _currentTrackId;
+
   bool _isLooping = false;
   bool get isLooping => _isLooping;
 
@@ -45,6 +49,9 @@ class AudioPlayerService extends ChangeNotifier {
   Timer? _sleepTimer;
   int _sleepTimerSecondsRemaining = 0;
   int get sleepTimerSecondsRemaining => _sleepTimerSecondsRemaining;
+
+  final MusicLocalStorage _storage = MusicLocalStorage.instance;
+  Timer? _positionSaveDebounce;
 
   /// Call once at app startup (before runApp).
   static Future<void> initBackground() async {
@@ -68,6 +75,7 @@ class AudioPlayerService extends ChangeNotifier {
 
     _audioPlayer.positionStream.listen((position) {
       _currentPosition = position;
+      _schedulePositionSave();
       notifyListeners();
     });
 
@@ -77,7 +85,10 @@ class AudioPlayerService extends ChangeNotifier {
           // just_audio handles looping internally, but safety logic is good
         } else {
           final autoplayEnabled = SettingsService().settings.autoplayNext;
-          if (autoplayEnabled && _playlistQueue.isNotEmpty && _queueIndex != -1 && _queueIndex < _playlistQueue.length - 1) {
+          if (autoplayEnabled &&
+              _playlistQueue.isNotEmpty &&
+              _queueIndex != -1 &&
+              _queueIndex < _playlistQueue.length - 1) {
             await playNext();
           } else {
             _isPlaying = false;
@@ -96,6 +107,59 @@ class AudioPlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _schedulePositionSave() {
+    if (_currentTrackId == null) {
+      return;
+    }
+
+    _positionSaveDebounce?.cancel();
+    _positionSaveDebounce = Timer(const Duration(milliseconds: 900), () {
+      _saveCurrentPosition();
+    });
+  }
+
+  Future<void> _saveCurrentPosition({Duration? overridePosition}) async {
+    final trackId = _currentTrackId;
+    if (trackId == null) {
+      return;
+    }
+
+    final position = overridePosition ?? _audioPlayer.position;
+    await _storage.savePosition(trackId, position);
+  }
+
+  Future<void> _restoreSavedPositionIfAvailable() async {
+    final trackId = _currentTrackId;
+    if (trackId == null) {
+      return;
+    }
+
+    final savedPosition = _storage.positionFor(trackId);
+    if (savedPosition > Duration.zero) {
+      await _audioPlayer.seek(savedPosition);
+      _currentPosition = savedPosition;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _recordRecentTrack({
+    required String trackId,
+    required String title,
+    String? artist,
+    String? coverUrl,
+    String? source,
+  }) async {
+    await _storage.recordRecentTrack(
+      MusicTrackSnapshot(
+        trackId: trackId,
+        title: title,
+        artist: artist,
+        coverUrl: coverUrl,
+        source: source,
+      ),
+    );
+  }
+
   /// Plays next track in the queue
   Future<void> playNext() async {
     if (_playlistQueue.isEmpty || _queueIndex == -1) return;
@@ -104,6 +168,7 @@ class AudioPlayerService extends ChangeNotifier {
       _queueIndex = nextIndex;
       final track = _playlistQueue[_queueIndex];
       notifyListeners();
+      await _saveCurrentPosition();
       await _playTrack(track);
     }
   }
@@ -116,6 +181,7 @@ class AudioPlayerService extends ChangeNotifier {
       _queueIndex = prevIndex;
       final track = _playlistQueue[_queueIndex];
       notifyListeners();
+      await _saveCurrentPosition();
       await _playTrack(track);
     }
   }
@@ -124,16 +190,37 @@ class AudioPlayerService extends ChangeNotifier {
     final String title = track['title'] ?? 'Unknown Track';
     final String filePath = track['filePath'] ?? track['url'] ?? '';
     final String? coverUrl = track['coverImage'] ?? track['thumbnail'];
-    
+    final String? trackId =
+        track['trackId']?.toString() ??
+        track['videoId']?.toString() ??
+        track['id']?.toString();
+
     if (filePath.startsWith('http')) {
-      await playUrl(filePath, title, playlistName: _currentPlaylistName, coverUrl: coverUrl);
+      await playUrl(
+        filePath,
+        title,
+        playlistName: _currentPlaylistName,
+        coverUrl: coverUrl,
+        trackId: trackId,
+      );
     } else {
-      await playLocalFile(filePath, title, playlistName: _currentPlaylistName);
+      await playLocalFile(
+        filePath,
+        title,
+        playlistName: _currentPlaylistName,
+        trackId: trackId,
+      );
     }
   }
 
   /// Plays a local audio file picked by the user.
-  Future<void> playLocalFile(String path, String fileName, {String? playlistName}) async {
+  Future<void> playLocalFile(
+    String path,
+    String fileName, {
+    String? playlistName,
+    String? trackId,
+  }) async {
+    _currentTrackId = trackId ?? path;
     _currentTrackTitle = fileName;
     _currentPath = path;
     _currentPlaylistName = playlistName;
@@ -144,7 +231,9 @@ class AudioPlayerService extends ChangeNotifier {
       AudioSource source;
 
       if (kIsWeb) {
-        if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http')) {
+        if (path.startsWith('data:') ||
+            path.startsWith('blob:') ||
+            path.startsWith('http')) {
           source = AudioSource.uri(
             Uri.parse(path),
             tag: MediaItem(
@@ -154,7 +243,9 @@ class AudioPlayerService extends ChangeNotifier {
             ),
           );
         } else {
-          debugPrint('[AudioPlayerService] Cannot play local file on web: $path');
+          debugPrint(
+            '[AudioPlayerService] Cannot play local file on web: $path',
+          );
           return;
         }
       } else {
@@ -169,7 +260,14 @@ class AudioPlayerService extends ChangeNotifier {
       }
 
       await _audioPlayer.setAudioSource(source);
+      await _restoreSavedPositionIfAvailable();
       await _audioPlayer.play();
+      await _recordRecentTrack(
+        trackId: _currentTrackId!,
+        title: fileName,
+        artist: playlistName,
+        source: path,
+      );
     } catch (e) {
       debugPrint('[AudioPlayerService] playLocalFile error: $e');
     }
@@ -177,7 +275,14 @@ class AudioPlayerService extends ChangeNotifier {
 
   /// Plays from a URL (e.g. YouTube stream or remote link).
   /// Returns true if successfully loaded and started playing, false otherwise.
-  Future<bool> playUrl(String url, String title, {String? playlistName, String? coverUrl}) async {
+  Future<bool> playUrl(
+    String url,
+    String title, {
+    String? playlistName,
+    String? coverUrl,
+    String? trackId,
+  }) async {
+    _currentTrackId = trackId ?? url;
     _currentTrackTitle = title;
     _currentPath = url;
     _currentPlaylistName = playlistName;
@@ -187,19 +292,30 @@ class AudioPlayerService extends ChangeNotifier {
     try {
       final source = AudioSource.uri(
         Uri.parse(url),
-        headers: url.contains('googlevideo.com') ? {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://www.youtube.com/',
-        } : null,
+        headers: url.contains('googlevideo.com')
+            ? {
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': 'https://www.youtube.com/',
+              }
+            : null,
         tag: MediaItem(
-          id: url,
+          id: _currentTrackId!,
           title: title,
           artist: playlistName ?? 'Stream',
           artUri: coverUrl != null ? Uri.parse(coverUrl) : null,
         ),
       );
       await _audioPlayer.setAudioSource(source);
+      await _restoreSavedPositionIfAvailable();
       await _audioPlayer.play();
+      await _recordRecentTrack(
+        trackId: _currentTrackId!,
+        title: title,
+        artist: playlistName,
+        coverUrl: coverUrl,
+        source: url,
+      );
       return true;
     } catch (e) {
       debugPrint('[AudioPlayerService] playUrl error: $e');
@@ -211,7 +327,7 @@ class AudioPlayerService extends ChangeNotifier {
   void startSleepTimer(int minutes) {
     cancelSleepTimer();
     if (minutes <= 0) return;
-    
+
     _sleepTimerSecondsRemaining = minutes * 60;
     notifyListeners();
 
@@ -236,6 +352,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   Future<void> pause() async {
     await _audioPlayer.pause();
+    await _saveCurrentPosition();
   }
 
   Future<void> resume() async {
@@ -258,11 +375,41 @@ class AudioPlayerService extends ChangeNotifier {
 
   Future<void> seek(Duration position) async {
     await _audioPlayer.seek(position);
+    await _saveCurrentPosition(overridePosition: position);
+  }
+
+  bool get isCurrentFavorite {
+    final trackId = _currentTrackId;
+    if (trackId == null) {
+      return false;
+    }
+    return _storage.isFavorite(trackId);
+  }
+
+  Future<void> toggleCurrentFavorite() async {
+    final trackId = _currentTrackId;
+    final title = _currentTrackTitle;
+    if (trackId == null || title == null) {
+      return;
+    }
+
+    await _storage.toggleFavorite(
+      MusicTrackSnapshot(
+        trackId: trackId,
+        title: title,
+        artist: _currentPlaylistName,
+        coverUrl: _currentCoverUrl,
+        source: _currentPath,
+      ),
+    );
+    notifyListeners();
   }
 
   @override
   void dispose() {
     _sleepTimer?.cancel();
+    _positionSaveDebounce?.cancel();
+    unawaited(_saveCurrentPosition());
     _audioPlayer.dispose();
     super.dispose();
   }

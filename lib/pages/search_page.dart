@@ -32,7 +32,7 @@ class _SearchPageState extends State<SearchPage> {
     'https://pipedapi.kavin.rocks',
     'https://pipedapi.tokhmi.xyz',
     'https://api.piped.yt',
-    'https://piped-api.garudalinux.org'
+    'https://piped-api.garudalinux.org',
   ];
 
   @override
@@ -86,7 +86,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Future<void> _performSearch(String query) async {
     if (query.trim().isEmpty) return;
-    
+
     setState(() {
       _isSearching = true;
       _errorMessage = null;
@@ -98,7 +98,10 @@ class _SearchPageState extends State<SearchPage> {
     // 1. Try YouTube Data API Search if signed in
     if (_googleAuthService.isSignedIn) {
       try {
-        final results = await _googleAuthService.searchYouTube(query, maxResults: 25);
+        final results = await _googleAuthService.searchYouTube(
+          query,
+          maxResults: 25,
+        );
         if (results.isNotEmpty) {
           if (mounted) {
             setState(() {
@@ -117,11 +120,10 @@ class _SearchPageState extends State<SearchPage> {
     if (!success) {
       for (final instance in _pipedInstances) {
         try {
-          final uri = Uri.parse('$instance/search').replace(queryParameters: {
-            'q': query,
-            'filter': 'music_videos',
-          });
-          
+          final uri = Uri.parse(
+            '$instance/search',
+          ).replace(queryParameters: {'q': query, 'filter': 'music_videos'});
+
           final res = await http.get(uri).timeout(const Duration(seconds: 5));
           if (res.statusCode == 200) {
             final data = jsonDecode(res.body);
@@ -129,15 +131,21 @@ class _SearchPageState extends State<SearchPage> {
               final List<dynamic> items = data['items'];
               if (mounted) {
                 setState(() {
-                  _searchResults = items.where((item) => item['type'] == 'stream').map((item) {
-                    return {
-                      'videoId': (item['url'] as String).replaceFirst('/watch?v=', ''),
-                      'title': item['title'] ?? 'Unknown Track',
-                      'artist': item['uploaderName'] ?? 'YouTube Artist',
-                      'thumbnail': item['thumbnail'] ?? '',
-                      'duration': item['duration'] ?? 0,
-                    };
-                  }).toList();
+                  _searchResults = items
+                      .where((item) => item['type'] == 'stream')
+                      .map((item) {
+                        return {
+                          'videoId': (item['url'] as String).replaceFirst(
+                            '/watch?v=',
+                            '',
+                          ),
+                          'title': item['title'] ?? 'Unknown Track',
+                          'artist': item['uploaderName'] ?? 'YouTube Artist',
+                          'thumbnail': item['thumbnail'] ?? '',
+                          'duration': item['duration'] ?? 0,
+                        };
+                      })
+                      .toList();
                   _isSearching = false;
                 });
               }
@@ -173,11 +181,20 @@ class _SearchPageState extends State<SearchPage> {
         content: Row(
           children: [
             const SizedBox(
-              width: 20, height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text('Loading audio stream for "$title"...', overflow: TextOverflow.ellipsis)),
+            Expanded(
+              child: Text(
+                'Loading audio stream for "$title"...',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         duration: const Duration(seconds: 10),
@@ -189,8 +206,12 @@ class _SearchPageState extends State<SearchPage> {
     // 1. Try extracting the stream on-device using youtube_explode_dart
     final yt = YoutubeExplode();
     try {
-      final manifest = await yt.videos.streamsClient.getManifest(videoId).timeout(const Duration(seconds: 7));
-      final mp4Streams = manifest.audioOnly.where((s) => s.container.name == 'mp4');
+      final manifest = await yt.videos.streamsClient
+          .getManifest(videoId)
+          .timeout(const Duration(seconds: 7));
+      final mp4Streams = manifest.audioOnly.where(
+        (s) => s.container.name == 'mp4',
+      );
       final audioStream = mp4Streams.isNotEmpty
           ? mp4Streams.withHighestBitrate()
           : manifest.audioOnly.withHighestBitrate();
@@ -205,10 +226,17 @@ class _SearchPageState extends State<SearchPage> {
         title,
         playlistName: 'YouTube Music',
         coverUrl: thumbnail,
+        trackId: videoId,
       );
 
       if (success) {
-        await _settingsService.addToYoutubeHistory(videoId, title, artist, thumbnail, duration);
+        await _settingsService.addToYoutubeHistory(
+          videoId,
+          title,
+          artist,
+          thumbnail,
+          duration,
+        );
         streamFound = true;
       }
     } catch (e) {
@@ -223,27 +251,34 @@ class _SearchPageState extends State<SearchPage> {
         try {
           final uri = Uri.parse('$instance/streams/$videoId');
           final res = await http.get(uri).timeout(const Duration(seconds: 5));
-          
+
           if (res.statusCode == 200) {
             final data = jsonDecode(res.body);
             if (data['audioStreams'] != null) {
               final List<dynamic> streams = data['audioStreams'];
               if (streams.isNotEmpty) {
                 final audioUrl = streams.first['url'] as String;
-                
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).clearSnackBars();
                 }
-                
+
                 final success = await _audioService.playUrl(
-                  audioUrl, 
-                  title, 
-                  playlistName: 'YouTube Music', 
-                  coverUrl: thumbnail
+                  audioUrl,
+                  title,
+                  playlistName: 'YouTube Music',
+                  coverUrl: thumbnail,
+                  trackId: videoId,
                 );
 
                 if (success) {
-                  await _settingsService.addToYoutubeHistory(videoId, title, artist, thumbnail, duration);
+                  await _settingsService.addToYoutubeHistory(
+                    videoId,
+                    title,
+                    artist,
+                    thumbnail,
+                    duration,
+                  );
                   streamFound = true;
                   break;
                 }
@@ -260,7 +295,9 @@ class _SearchPageState extends State<SearchPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error playing this track. Try another one.')),
+          const SnackBar(
+            content: Text('Error playing this track. Try another one.'),
+          ),
         );
       }
     }
@@ -303,7 +340,12 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               // Premium Search Bar Header
               Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 48, bottom: 12),
+                padding: const EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 48,
+                  bottom: 12,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -314,7 +356,9 @@ class _SearchPageState extends State<SearchPage> {
                           borderRadius: BorderRadius.circular(25),
                           border: Border.all(
                             color: _searchFocusNode.hasFocus
-                                ? ColorTheme.neonLabelColor.withValues(alpha: 0.5)
+                                ? ColorTheme.neonLabelColor.withValues(
+                                    alpha: 0.5,
+                                  )
                                 : Colors.transparent,
                             width: 1,
                           ),
@@ -325,11 +369,19 @@ class _SearchPageState extends State<SearchPage> {
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Search YouTube Music...',
-                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
-                            prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                            hintStyle: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.4),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.grey,
+                            ),
                             suffixIcon: _searchController.text.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.clear, color: Colors.grey),
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.grey,
+                                    ),
                                     onPressed: () {
                                       _searchController.clear();
                                       setState(() {
@@ -339,7 +391,10 @@ class _SearchPageState extends State<SearchPage> {
                                   )
                                 : null,
                             border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
                           ),
                           onSubmitted: _performSearch,
                         ),
@@ -356,29 +411,37 @@ class _SearchPageState extends State<SearchPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const CircularProgressIndicator(color: ColorTheme.neonLabelColor),
+                            const CircularProgressIndicator(
+                              color: ColorTheme.neonLabelColor,
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               'Scanning YouTube...',
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 14,
+                              ),
                             ),
                           ],
                         ),
                       )
                     : _errorMessage != null
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Text(
-                                _errorMessage!,
-                                style: const TextStyle(color: Colors.redAccent, fontSize: 16),
-                                textAlign: TextAlign.center,
-                              ),
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 16,
                             ),
-                          )
-                        : _searchResults.isEmpty
-                            ? _buildDefaultView(isGoogleConnected, historyTracks)
-                            : _buildSearchResultsList(),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : _searchResults.isEmpty
+                    ? _buildDefaultView(isGoogleConnected, historyTracks)
+                    : _buildSearchResultsList(),
               ),
             ],
           ),
@@ -401,18 +464,25 @@ class _SearchPageState extends State<SearchPage> {
             border: Border.all(color: Colors.white.withValues(alpha: 0.03)),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
+            ),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: SizedBox(
-                width: 50, height: 50,
+                width: 50,
+                height: 50,
                 child: track['thumbnail'].isNotEmpty
                     ? Image.network(
                         track['thumbnail'],
                         fit: BoxFit.cover,
                         errorBuilder: (ctx, err, stack) => Container(
                           color: Colors.grey.shade900,
-                          child: const Icon(Icons.music_note, color: Colors.grey),
+                          child: const Icon(
+                            Icons.music_note,
+                            color: Colors.grey,
+                          ),
                         ),
                       )
                     : Container(
@@ -423,13 +493,20 @@ class _SearchPageState extends State<SearchPage> {
             ),
             title: Text(
               track['title'],
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             subtitle: Text(
               '${track['artist']} • ${_formatDurationSeconds(track['duration'])}',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 12,
+              ),
             ),
             trailing: Container(
               decoration: BoxDecoration(
@@ -437,7 +514,10 @@ class _SearchPageState extends State<SearchPage> {
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.play_arrow, color: ColorTheme.neonLabelColor),
+                icon: const Icon(
+                  Icons.play_arrow,
+                  color: ColorTheme.neonLabelColor,
+                ),
                 onPressed: () => _playYoutubeVideo(track),
               ),
             ),
@@ -448,7 +528,10 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildDefaultView(bool isGoogleConnected, List<Map<String, dynamic>> history) {
+  Widget _buildDefaultView(
+    bool isGoogleConnected,
+    List<Map<String, dynamic>> history,
+  ) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
@@ -469,7 +552,9 @@ class _SearchPageState extends State<SearchPage> {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.red.shade900.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: Colors.red.shade900.withValues(alpha: 0.3),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -482,19 +567,31 @@ class _SearchPageState extends State<SearchPage> {
                           color: Colors.white.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.g_mobiledata_rounded, color: Colors.white, size: 28),
+                        child: const Icon(
+                          Icons.g_mobiledata_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Text(
                         'Unlock YouTube History',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   const Text(
                     'Connect your Google Account in Settings to sync your YouTube liked videos and playback history!',
-                    style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -503,10 +600,18 @@ class _SearchPageState extends State<SearchPage> {
           // YouTube Liked Videos (from Google API)
           if (isGoogleConnected) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, top: 16.0, bottom: 12.0),
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                top: 16.0,
+                bottom: 12.0,
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.thumb_up_outlined, color: ColorTheme.neonLabelColor, size: 20),
+                  const Icon(
+                    Icons.thumb_up_outlined,
+                    color: ColorTheme.neonLabelColor,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Your Liked Videos',
@@ -519,7 +624,11 @@ class _SearchPageState extends State<SearchPage> {
                   const Spacer(),
                   if (!_isLoadingLiked)
                     IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.white54, size: 20),
+                      icon: const Icon(
+                        Icons.refresh,
+                        color: Colors.white54,
+                        size: 20,
+                      ),
                       onPressed: _loadLikedVideos,
                       tooltip: 'Refresh liked videos',
                     ),
@@ -531,18 +640,29 @@ class _SearchPageState extends State<SearchPage> {
                 padding: EdgeInsets.symmetric(vertical: 24.0),
                 child: Center(
                   child: SizedBox(
-                    width: 24, height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: ColorTheme.neonLabelColor),
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ColorTheme.neonLabelColor,
+                    ),
                   ),
                 ),
               )
             else if (_likedVideos.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 24.0,
+                ),
                 child: Center(
                   child: Text(
                     'No liked videos found.\nLike some videos on YouTube to see them here!',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 14, height: 1.5),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -565,10 +685,18 @@ class _SearchPageState extends State<SearchPage> {
           // Local Playback History
           if (isGoogleConnected) ...[
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, top: 16.0, bottom: 12.0),
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                top: 16.0,
+                bottom: 12.0,
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.history, color: ColorTheme.neonLabelColor, size: 20),
+                  const Icon(
+                    Icons.history,
+                    color: ColorTheme.neonLabelColor,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Recently Played',
@@ -582,18 +710,28 @@ class _SearchPageState extends State<SearchPage> {
                   if (history.isNotEmpty)
                     TextButton(
                       onPressed: () => _settingsService.clearYoutubeHistory(),
-                      child: const Text('Clear', style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                      child: const Text(
+                        'Clear',
+                        style: TextStyle(color: Colors.redAccent, fontSize: 12),
+                      ),
                     ),
                 ],
               ),
             ),
             if (history.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 24.0,
+                ),
                 child: Center(
                   child: Text(
                     'No playback history yet.\nSearch and play music to build your history!',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 14, height: 1.5),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -618,7 +756,11 @@ class _SearchPageState extends State<SearchPage> {
             padding: EdgeInsets.only(left: 16.0, top: 24.0, bottom: 12.0),
             child: Row(
               children: [
-                Icon(Icons.star_outline, color: ColorTheme.neonLabelColor, size: 20),
+                Icon(
+                  Icons.star_outline,
+                  color: ColorTheme.neonLabelColor,
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Trending Music Searches',
@@ -634,7 +776,10 @@ class _SearchPageState extends State<SearchPage> {
           _buildTrendingCard('Lo-fi Chill Beats', Icons.spa_outlined),
           _buildTrendingCard('Acoustic Hits 2026', Icons.music_note_outlined),
           _buildTrendingCard('Synthwave Night Drive', Icons.nightlife_outlined),
-          _buildTrendingCard('Epic Gaming Orchestral', Icons.videogame_asset_outlined),
+          _buildTrendingCard(
+            'Epic Gaming Orchestral',
+            Icons.videogame_asset_outlined,
+          ),
           const SizedBox(height: 120), // MiniPlayer spacing
         ],
       ),
@@ -656,40 +801,62 @@ class _SearchPageState extends State<SearchPage> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    width: 120, height: 120,
+                    width: 120,
+                    height: 120,
                     color: Colors.white.withValues(alpha: 0.05),
                     child: (track['thumbnail'] ?? '').toString().isNotEmpty
                         ? Image.network(
                             track['thumbnail'],
                             fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => const Icon(Icons.music_note, color: Colors.grey, size: 40),
+                            errorBuilder: (ctx, err, stack) => const Icon(
+                              Icons.music_note,
+                              color: Colors.grey,
+                              size: 40,
+                            ),
                           )
-                        : const Icon(Icons.music_note, color: Colors.grey, size: 40),
+                        : const Icon(
+                            Icons.music_note,
+                            color: Colors.grey,
+                            size: 40,
+                          ),
                   ),
                 ),
                 Positioned(
-                  bottom: 6, right: 6,
+                  bottom: 6,
+                  right: 6,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       _formatDurationSeconds(track['duration'] ?? 0),
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: 6, left: 6,
+                  bottom: 6,
+                  left: 6,
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
                       color: ColorTheme.neonLabelColor,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.play_arrow, color: Colors.black, size: 14),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      color: Colors.black,
+                      size: 14,
+                    ),
                   ),
                 ),
               ],
@@ -697,14 +864,21 @@ class _SearchPageState extends State<SearchPage> {
             const SizedBox(height: 8),
             Text(
               track['title'] ?? 'Unknown',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
             Text(
               track['artist'] ?? 'YouTube',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 11,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -724,8 +898,19 @@ class _SearchPageState extends State<SearchPage> {
       ),
       child: ListTile(
         leading: Icon(icon, color: ColorTheme.neonLabelColor),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14)),
-        trailing: Icon(Icons.arrow_forward_ios, color: Colors.white.withValues(alpha: 0.3), size: 14),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          color: Colors.white.withValues(alpha: 0.3),
+          size: 14,
+        ),
         onTap: () {
           _searchController.text = title;
           _performSearch(title);
